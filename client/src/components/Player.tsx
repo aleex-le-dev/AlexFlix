@@ -14,7 +14,9 @@ import {
   VolumeX
 } from 'lucide-react';
 import type { MediaItem, StreamInfo } from '../types';
-import { api, streamUrl, transcodeUrl } from '../lib/api';
+import { api, audioTrackUrl, streamUrl, transcodeUrl } from '../lib/api';
+import { lockScroll } from '../lib/scrollLock';
+import { hasNoAudio, openInVlc, supportsDolby, vlcHint } from '../lib/externalPlayer';
 import { episodeLabel, formatClock } from '../lib/format';
 import { getPrefs, getProgressMap, notifyStorage, saveProgress, setPrefs } from '../lib/storage';
 
@@ -68,6 +70,9 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
   const [buffered, setBuffered] = useState(0);
   const [waiting, setWaiting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Son non décodé par le navigateur (Dolby AC3/E-AC3, DTS) → proposition d'ouvrir dans VLC. */
+  const [noAudio, setNoAudio] = useState(false);
+  const audioCheck = useRef<{ start: number | null; done: boolean }>({ start: null, done: false });
   const [uiVisible, setUiVisible] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [volume, setVolume] = useState(() => getPrefs().volume);
@@ -77,6 +82,11 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
 
   const index = item.files.findIndex((file) => file.id === fileId);
   const file = index >= 0 ? item.files[index] : item.files[0];
+  /** Son séparé (AAC) : la vidéo est jouée en muet et cette piste suit sa position. */
+  const audioRef = useRef<HTMLAudioElement>(null);
+  // Piste AAC seulement si l'appareil ne décode pas le Dolby (sinon on garde le 5.1 d'origine).
+  const [nativeDolby] = useState(supportsDolby);
+  const sideAudio = mode === 'direct' && !nativeDolby ? audioTrackUrl(fileId) : null;
   const nextFile = item.type === 'tv' && index >= 0 ? (item.files[index + 1] ?? null) : null;
   const episodeMeta =
     file && file.season !== null && file.episode !== null ? item.seasons[String(file.season)]?.episodes[String(file.episode)] : undefined;
@@ -128,6 +138,8 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     timeRef.current = 0;
     durationRef.current = 0;
     setInfo(null);
+    setNoAudio(false);
+    audioCheck.current = { start: null, done: false };
     setMode(null);
     setSrc('');
     setError(null);
@@ -173,12 +185,11 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
   }, [poke]);
 
   useEffect(() => {
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     const onFullscreen = (): void => setFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', onFullscreen);
     return () => {
-      document.body.style.overflow = previous;
+      unlock();
       document.removeEventListener('fullscreenchange', onFullscreen);
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
       notifyStorage();
@@ -216,7 +227,11 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     setMuted(mute);
     if (videoRef.current) {
       videoRef.current.volume = next;
-      videoRef.current.muted = mute;
+      videoRef.current.muted = mute || Boolean(audioRef.current);
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = next;
+      audioRef.current.muted = mute;
     }
     setPrefs({ volume: next, muted: mute });
   }, []);
@@ -287,7 +302,7 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     const video = videoRef.current;
     if (!video) return;
     video.volume = volume;
-    video.muted = muted;
+    video.muted = muted || Boolean(sideAudio);
     if (modeRef.current === 'direct') {
       if (Number.isFinite(video.duration) && video.duration > 0) {
         durationRef.current = video.duration;
@@ -312,6 +327,16 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     const absolute = (modeRef.current === 'transcode' ? offsetRef.current : 0) + video.currentTime;
     timeRef.current = absolute;
     if (!dragging) setTime(absolute);
+    const check = audioCheck.current;
+    if (!check.done && modeRef.current === 'direct' && !video.paused) {
+      if (check.start === null) check.start = video.currentTime;
+      else if (video.currentTime - check.start > 2.5) {
+        check.done = true;
+        if (!sideAudio && hasNoAudio(video)) setNoAudio(true);
+      }
+    }
+    const audio = audioRef.current;
+    if (audio && !video.paused && Math.abs(audio.currentTime - video.currentTime) > 0.3) audio.currentTime = video.currentTime;
     if (Date.now() - lastSave.current > 5000) {
       lastSave.current = Date.now();
       persist(false);
@@ -400,9 +425,29 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
         onPause={() => {
           setPlaying(false);
           persist(false);
+          audioRef.current?.pause();
         }}
-        onWaiting={() => setWaiting(true)}
-        onPlaying={() => setWaiting(false)}
+        onSeeking={() => {
+          if (audioRef.current && videoRef.current) audioRef.current.currentTime = videoRef.current.currentTime;
+        }}
+        onRateChange={() => {
+          if (audioRef.current && videoRef.current) audioRef.current.playbackRate = videoRef.current.playbackRate;
+        }}
+        onWaiting={() => {
+          setWaiting(true);
+          audioRef.current?.pause();
+        }}
+        onPlaying={() => {
+          setWaiting(false);
+          const audio = audioRef.current;
+          const video = videoRef.current;
+          if (audio && video) {
+            audio.currentTime = video.currentTime;
+            audio.volume = volume;
+            audio.muted = muted;
+            void audio.play().catch(() => undefined);
+          }
+        }}
         onCanPlay={() => setWaiting(false)}
         onEnded={onEnded}
         onError={onError}
@@ -410,11 +455,51 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
         onDoubleClick={toggleFullscreen}
         className="h-full w-full bg-black object-contain"
       />
+      {sideAudio && <audio key={sideAudio} ref={audioRef} src={sideAudio} preload="auto" className="hidden" />}
 
       {waiting && !error && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <LoaderCircle className="h-16 w-16 animate-spin text-ap-red" />
         </div>
+      )}
+
+      {noAudio && !error && (
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute left-1/2 top-20 z-20 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 rounded-xl bg-black/80 p-4 shadow-2xl ring-1 ring-white/15 backdrop-blur-xl"
+        >
+          <p className="text-sm font-semibold text-white">Pas de son dans le navigateur</p>
+          <p className="mt-1 text-xs text-neutral-300">
+            Le son de ce fichier est en Dolby (AC3 / E-AC3), que le navigateur ne sait pas lire. VLC le lit parfaitement. {vlcHint()}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                videoRef.current?.pause();
+                openInVlc(src, `${item.title}${subtitle ? ` - ${subtitle}` : ''}`);
+              }}
+              className="rounded-full bg-[#ff8800] px-4 py-1.5 text-sm font-semibold text-black transition hover:bg-[#ffa033]"
+            >
+              Ouvrir dans VLC
+            </button>
+            <button
+              type="button"
+              onClick={() => void navigator.clipboard?.writeText(src).catch(() => undefined)}
+              className="rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-white/25"
+            >
+              Copier le lien
+            </button>
+            <button
+              type="button"
+              onClick={() => setNoAudio(false)}
+              className="ml-auto rounded-full px-3 py-1.5 text-sm text-neutral-300 transition hover:text-white"
+            >
+              Continuer sans son
+            </button>
+          </div>
+        </motion.div>
       )}
 
       {error && (

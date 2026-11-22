@@ -631,7 +631,7 @@ $types = [
 $ext = strtolower(pathinfo($target, PATHINFO_EXTENSION));
 header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
 header('Content-Length: ' . (string)filesize($target));
-if ($ext === 'html' || $ext === 'webmanifest' || basename($target) === 'catalog.json') {
+if ($ext === 'html' || $ext === 'webmanifest' || basename($target) === 'catalog.json' || basename($target) === 'audio-status.json') {
   header('Cache-Control: private, no-cache');
 } elseif (strpos($rel, '/assets/') === 0) {
   header('Cache-Control: private, max-age=31536000, immutable');

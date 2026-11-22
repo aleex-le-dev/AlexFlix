@@ -19,9 +19,11 @@ interface Props {
 export function Grid({ title, subtitle, items, progress, favorites, emptyLabel, onOpen, onPlay, onToggleFavorite }: Props) {
   return (
     <section className="px-4 pb-10 pt-4 md:px-12">
-      <div className="mb-4 flex items-baseline gap-3">
-        <h2 className="text-xl font-semibold text-white md:text-2xl">{title}</h2>
-      </div>
+      {title && (
+        <div className="mb-4 flex items-baseline gap-3">
+          <h2 className="text-xl font-semibold text-white md:text-2xl">{title}</h2>
+        </div>
+      )}
       {items.length === 0 ? (
         <p className="py-20 text-center text-neutral-400">{emptyLabel}</p>
       ) : (

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Check, Clapperboard, Download, ImageOff, ListX, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaFileDTO, MediaItem, MediaType } from '../types';
 import { api, downloadUrl, imageUrl } from '../lib/api';
+import { lockScroll } from '../lib/scrollLock';
 
 function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: string; className: string }) {
   const href = downloadUrl(file);
@@ -85,11 +86,10 @@ export function DetailModal({
       if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlock = lockScroll();
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previous;
+      unlock();
     };
   }, [onClose]);
 

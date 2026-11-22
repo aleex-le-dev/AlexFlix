@@ -25,6 +25,7 @@ export const EMPTY_STREAM_INFO: StreamInfo = {
 };
 
 const downloadUrls = new Map<string, string>();
+const audioUrls = new Map<string, string>();
 
 async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
@@ -51,7 +52,13 @@ async function loadCatalog(): Promise<CatalogResponse> {
   setBaseline(data.baselineAt);
   if (!VITRINE) return data;
   downloadUrls.clear();
-  for (const item of data.items) for (const file of item.files) if (file.downloadUrl) downloadUrls.set(file.id, file.downloadUrl);
+  audioUrls.clear();
+  for (const item of data.items) {
+    for (const file of item.files) {
+      if (file.downloadUrl) downloadUrls.set(file.id, file.downloadUrl);
+      if (file.audioUrl) audioUrls.set(file.id, file.audioUrl);
+    }
+  }
   return data;
 }
 
@@ -96,6 +103,9 @@ export const streamUrl = (fileId: string): string =>
 
 export const transcodeUrl = (fileId: string, start: number): string =>
   `/api/stream/${encodeURIComponent(fileId)}/transcode?start=${Math.max(0, Math.floor(start))}`;
+
+/** Piste son AAC à jouer en parallèle de la vidéo (muette), si la vidéo est en Dolby. */
+export const audioTrackUrl = (fileId: string): string | null => (VITRINE ? (audioUrls.get(fileId) ?? null) : null);
 
 export const downloadUrl = (file: MediaFileDTO): string | null =>
   VITRINE ? (file.downloadUrl ?? null) : `/api/stream/${encodeURIComponent(file.id)}?download=1`;

@@ -137,10 +137,23 @@ if (!skipLinks) {
 if (!store.data.baselineAt && store.baselineAt()) await store.save();
 
 const { genres, keywords } = store.facets();
-const items: Array<ItemDTO & { files: Array<ItemDTO['files'][number] & { downloadUrl: string | null }> }> = store.list().map((item) => ({
-  ...item,
-  files: item.files.map((file) => ({ ...file, downloadUrl: links[file.id]?.url ?? null }))
-}));
+// Pistes son AAC séparées (npm run audio) pour les vidéos en Dolby, illisible par les navigateurs.
+const audioTracks = JSON.parse(await fs.readFile(path.join(config.dataDir, 'audio-tracks.json'), 'utf8').catch(() => '{}')) as Record<
+  string,
+  { status: string; relPath: string; url?: string }
+>;
+const audioUrlOf = (fileId: string): string | null => {
+  const track = audioTracks[fileId];
+  return track?.status === 'done' && track.url && track.relPath === store.data.files[fileId]?.relPath ? track.url : null;
+};
+type PublishedFile = ItemDTO['files'][number] & { downloadUrl: string | null; audioUrl: string | null };
+const items: Array<Omit<ItemDTO, 'files'> & { files: PublishedFile[] }> = store
+  .list()
+  .map((item) => ({
+    ...item,
+    files: item.files.map((file) => ({ ...file, downloadUrl: links[file.id]?.url ?? null, audioUrl: audioUrlOf(file.id) }))
+  }));
+log(`Pistes son AAC : ${items.reduce((count, item) => count + item.files.filter((file) => file.audioUrl).length, 0)} vidéo(s).`);
 
 const imageNames = new Set<string>();
 for (const item of items) {

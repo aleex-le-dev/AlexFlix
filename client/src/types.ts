@@ -36,6 +36,8 @@ export interface MediaFileDTO {
   episode: number | null;
   addedAt: string;
   downloadUrl?: string | null;
+  /** Piste son AAC séparée (vidéo en Dolby, illisible par le navigateur) — vitrine uniquement. */
+  audioUrl?: string | null;
 }
 
 export interface MediaItem {

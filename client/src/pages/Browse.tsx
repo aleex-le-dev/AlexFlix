@@ -12,6 +12,8 @@ import { AmbientBackdrop } from '../components/AmbientBackdrop';
 import { Hero } from '../components/Hero';
 import { Row } from '../components/Row';
 import { Grid } from '../components/Grid';
+import { SearchBar } from '../components/SearchBar';
+import { SettingsPanel } from '../components/SettingsPanel';
 import { DetailModal } from '../components/DetailModal';
 import { Player } from '../components/Player';
 import { ScanToast } from '../components/ScanToast';
@@ -55,11 +57,15 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   const progress = useProgress();
   const [tab, setTab] = useState<Tab>(initial.tab);
   const [query, setQuery] = useState(initial.query);
+  /** Mode recherche : barre centrée au-dessus des résultats (activé au 1er caractère tapé dans le menu). */
+  const [searchMode, setSearchMode] = useState(initial.query.length > 0);
   const deferredQuery = useDeferredValue(query);
   const [genre, setGenre] = useState<string | null>(initial.genre);
   const [selectedId, setSelectedId] = useState<string | null>(initial.selected);
   const [playing, setPlaying] = useState<{ itemId: string; fileId: string } | null>(null);
   const [scan, setScan] = useState<ScanStatus | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const closeSettings = useCallback(() => setSettingsOpen(false), []);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -101,7 +107,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   );
 
   const searching = deferredQuery.trim().length > 0;
-  const showGrid = searching || tab === 'mylist' || genre === TOP_CATEGORY;
+  const showGrid = searchMode || searching || tab === 'mylist' || genre === TOP_CATEGORY;
   const showHero = !showGrid && featured.length > 0;
 
   useEffect(() => {
@@ -136,6 +142,8 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
   const changeTab = useCallback((next: Tab) => {
     setTab(next);
+    setQuery('');
+    setSearchMode(false);
     setGenre(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
@@ -226,18 +234,39 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
             onInfo={openItem}
           />
         ) : (
-          <div className="h-24 md:h-28" />
+          <div className={searchMode ? 'h-20 md:h-[88px]' : 'h-24 md:h-28'} />
         )}
 
         <div className={showHero ? 'relative z-10 -mt-16 md:-mt-[7vw]' : 'relative z-10'}>
+          {searchMode && (
+            <SearchBar
+              value={query}
+              count={searching ? filtered.length : 0}
+              onChange={setQuery}
+              onClose={() => {
+                setQuery('');
+                setSearchMode(false);
+              }}
+            />
+          )}
           {showGrid ? (
             <Grid
-              title={gridTitle}
-              items={searching ? sortSearchResults(filtered, deferredQuery) : genre === TOP_CATEGORY ? rankByRating(filtered) : filtered}
+              title={searchMode ? '' : gridTitle}
+              items={
+                searchMode && !searching
+                  ? []
+                  : searching
+                    ? sortSearchResults(filtered, deferredQuery)
+                    : genre === TOP_CATEGORY
+                      ? rankByRating(filtered)
+                      : filtered
+              }
               progress={progress}
               favorites={favorites}
               emptyLabel={
-                tab === 'mylist' && !searching
+                searchMode && !searching
+                  ? 'Tapez un titre, un acteur ou une saga.'
+                  : tab === 'mylist' && !searching
                   ? 'Ajoutez des films et séries à Ma liste avec le bouton +.'
                   : 'Aucun titre ne correspond. Essayez un autre titre, acteur ou genre.'
               }
@@ -275,19 +304,21 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
         category={genre}
         onCategory={(nextTab, value) => {
           setQuery('');
+          setSearchMode(false);
           setTab(nextTab);
           setGenre(value);
         }}
         tab={tab}
         onTab={changeTab}
-        query={query}
-        onQuery={setQuery}
+        onOpenSearch={() => setSearchMode(true)}
+        searchHidden={searchMode}
         scan={scan}
         onScan={(full) => void startScan(full)}
         profile={profile}
         profiles={profiles}
         onSwitchProfile={onSwitchProfile}
         onManageProfiles={onManageProfiles}
+        onOpenSettings={() => setSettingsOpen(true)}
         onLogout={onLogout}
       />
 
@@ -331,6 +362,8 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
           />
         )}
       </AnimatePresence>
+
+      <AnimatePresence>{settingsOpen && <SettingsPanel key="settings" onClose={closeSettings} />}</AnimatePresence>
 
       <ScanToast scan={scan} />
     </div>

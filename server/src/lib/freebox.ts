@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createReadStream } from 'node:fs';
+import WebSocket from 'ws';
 import { config } from '../config.js';
 import { sleep } from './utils.js';
 
@@ -64,7 +66,20 @@ export class FreeboxClient {
 
   constructor(private readonly log: (message: string) => void = console.log) {}
 
-  private async request<T>(method: string, endpoint: string, body?: unknown): Promise<T> {
+  private reconnecting: Promise<void> | null = null;
+
+  /** Rouvre la session (elle expire sur les longs traitements) ; un seul login à la fois. */
+  private reconnect(): Promise<void> {
+    this.reconnecting ??= (async () => {
+      this.session = '';
+      await this.open();
+    })().finally(() => {
+      this.reconnecting = null;
+    });
+    return this.reconnecting;
+  }
+
+  private async request<T>(method: string, endpoint: string, body?: unknown, retried = false): Promise<T> {
     const headers: Record<string, string> = { accept: 'application/json' };
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (this.session) headers['x-fbx-app-auth'] = this.session;
@@ -75,6 +90,10 @@ export class FreeboxClient {
       signal: AbortSignal.timeout(20000)
     });
     const data = (await response.json().catch(() => ({ success: false, msg: `HTTP ${response.status}` }))) as FbxResponse<T>;
+    if (!data.success && data.error_code === 'auth_required' && !retried && this.session && !endpoint.startsWith('/login')) {
+      await this.reconnect();
+      return this.request<T>(method, endpoint, body, true);
+    }
     if (!data.success) {
       const error = new Error(`Freebox ${data.error_code ?? response.status} : ${data.msg ?? 'erreur inconnue'}`);
       Object.assign(error, { code: data.error_code });
@@ -171,6 +190,53 @@ export class FreeboxClient {
 
   async deleteShareLink(token: string): Promise<void> {
     await this.request('DELETE', `/share_link/${token}`);
+  }
+
+  /** Crée le dossier s'il n'existe pas (parent et nom en clair). */
+  async ensureDir(parentPath: string, name: string): Promise<void> {
+    const entries = await this.listDir(toFreeboxPath(parentPath));
+    if (entries.some((entry) => entry.type === 'dir' && entry.name === name)) return;
+    await this.request('POST', '/fs/mkdir/', { parent: toFreeboxPath(parentPath), dirname: name });
+  }
+
+  /**
+   * Envoie un fichier local sur le disque de la Freebox (API WebSocket /ws/upload, l'upload HTTP historique est désactivé).
+   * Chaque bloc binaire est acquitté par un message upload_data avant l'envoi du suivant.
+   */
+  async uploadFile(dirPath: string, fileName: string, localFile: string): Promise<void> {
+    const { size } = await fs.stat(localFile);
+    const ws = new WebSocket(`${this.base.replace(/^http/, 'ws')}/ws/upload`, { headers: { 'X-Fbx-App-Auth': this.session } });
+    const queue: Array<(message: { action: string; success: boolean; msg?: string; error_code?: string }) => void> = [];
+    ws.on('message', (raw) => queue.shift()?.(JSON.parse(raw.toString())));
+    const reply = (): Promise<{ action: string; success: boolean; msg?: string; error_code?: string }> =>
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Freebox : pas de réponse à l’envoi')), 60000);
+        queue.push((message) => {
+          clearTimeout(timer);
+          if (message.success) resolve(message);
+          else reject(new Error(`Freebox upload ${message.error_code ?? ''} : ${message.msg ?? message.action}`));
+        });
+      });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        ws.once('open', () => resolve());
+        ws.once('error', reject);
+      });
+      ws.send(JSON.stringify({ action: 'upload_start', request_id: 1, size, dirname: toFreeboxPath(dirPath), filename: fileName, force: 'overwrite' }));
+      await reply();
+      for await (const chunk of createReadStream(localFile, { highWaterMark: 1024 * 1024 })) {
+        ws.send(chunk as Buffer);
+        await reply();
+      }
+      ws.send(JSON.stringify({ action: 'upload_finalize', request_id: 1 }));
+      await reply();
+    } catch (error) {
+      // Session expirée ou connexion muette : on se reconnecte, l'appelant réessaie.
+      if (/auth_required|pas de réponse/i.test((error as Error).message)) await this.reconnect().catch(() => undefined);
+      throw error;
+    } finally {
+      ws.close();
+    }
   }
 
   /**

@@ -61,6 +61,18 @@ try {
   Write-Step 'Publication FTP'
   Invoke-Npm $deployArgs 'La publication a echoue (voir le message ci-dessus).'
 
+  if (-not $SiteSeul) {
+    # Son Dolby (AC3/E-AC3) illisible par les navigateurs : piste AAC separee pour les nouvelles videos, puis republication.
+    Write-Step 'Pistes son AAC (nouvelles videos)'
+    if (-not (Test-Path -LiteralPath (Get-EnvValue 'FFMPEG_PATH')) -and -not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+      Write-Host 'FFmpeg introuvable : pistes son ignorees (winget install Gyan.FFmpeg).' -ForegroundColor Yellow
+    } else {
+      & npm.cmd run audio --prefix server
+      if ($LASTEXITCODE -eq 0) { Invoke-Npm @('run', 'deploy', '--prefix', 'server', '--', '--no-links') 'La publication des pistes son a echoue.' }
+      else { Write-Host 'Pistes son : echec, le site reste publie sans les nouvelles pistes.' -ForegroundColor Yellow }
+    }
+  }
+
   Write-Host ""
   $site = Get-EnvValue 'SITE_URL'
   if ($site) { Write-Host "OK - site en ligne : $site" -ForegroundColor Green }
