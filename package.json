@@ -1,0 +1,21 @@
+{
+  "name": "alex-prime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Alex Prime — streaming personnel style Netflix pour la Freebox Révolution",
+  "scripts": {
+    "setup": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently -k -n api,web -c red,white \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "start": "npm start --prefix server",
+    "scan": "npm run scan --prefix server",
+    "scan:full": "npm run scan:full --prefix server",
+    "deploy": "npm run build:vitrine --prefix client && npm run deploy --prefix server",
+    "deploy:site": "npm run build:vitrine --prefix client && npm run deploy --prefix server -- --no-links",
+    "deploy:scan":"npm run build:vitrine --prefix client && npm run deploy --prefix server -- --scan",
+    "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

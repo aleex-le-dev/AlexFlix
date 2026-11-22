@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dist-vitrine/
+data/
+.env
+.env.*
+!.env.example
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
