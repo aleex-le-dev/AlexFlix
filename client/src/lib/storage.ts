@@ -20,8 +20,9 @@ export interface SyncHandlers {
   progress: (profileId: string, entry: ProgressEntry) => void;
 }
 
-export const STORAGE_EVENT = 'alexprime:storage';
-const PREFS_KEY = 'alexprime:prefs';
+export const STORAGE_EVENT = 'alexflix:storage';
+const PREFS_KEY = 'alexflix:prefs';
+const LEGACY_PREFS_KEY = 'alexprime:prefs';
 const LEGACY_FAVORITES = 'alexprime:favorites';
 const LEGACY_PROGRESS = 'alexprime:progress';
 const MAX_PROGRESS = 300;
@@ -29,8 +30,8 @@ const MAX_PROGRESS = 300;
 let activeProfile = 'alex';
 let sync: SyncHandlers | null = null;
 
-const favoritesKey = (profileId = activeProfile): string => `alexprime:favorites:${profileId}`;
-const progressKey = (profileId = activeProfile): string => `alexprime:progress:${profileId}`;
+const favoritesKey = (profileId = activeProfile): string => `alexflix:favorites:${profileId}`;
+const progressKey = (profileId = activeProfile): string => `alexflix:progress:${profileId}`;
 
 function rawGet(key: string): string | null {
   try {
@@ -67,8 +68,16 @@ export function setSyncHandlers(handlers: SyncHandlers): void {
   sync = handlers;
 }
 
-/** Les anciennes données (avant les profils) sont rattachées au profil Alex. */
+/** Les anciennes données sont migrées vers le préfixe alexflix:. */
 function migrateLegacy(): void {
+  const oldPrefs = rawGet(LEGACY_PREFS_KEY);
+  if (oldPrefs && rawGet(PREFS_KEY) === null) {
+    try {
+      localStorage.setItem(PREFS_KEY, oldPrefs);
+    } catch {
+      // ignore
+    }
+  }
   for (const [legacy, target] of [
     [LEGACY_FAVORITES, favoritesKey('alex')],
     [LEGACY_PROGRESS, progressKey('alex')]
@@ -81,6 +90,19 @@ function migrateLegacy(): void {
     } catch {
       continue;
     }
+  }
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('alexprime:')) continue;
+      const target = 'alexflix:' + key.slice('alexprime:'.length);
+      if (rawGet(target) === null) {
+        const val = rawGet(key);
+        if (val !== null) localStorage.setItem(target, val);
+      }
+    }
+  } catch {
+    // ignore
   }
 }
 migrateLegacy();

@@ -12,8 +12,10 @@ export const MAX_PROFILES = 5;
 export const DEFAULT_PROFILES: Profile[] = [{ id: 'alex', name: 'Alex', avatar: 'bounty' }];
 
 const REMOTE = __VITRINE__;
-const PROFILES_KEY = 'alexprime:profiles';
-const SELECTED_KEY = 'alexprime:profile';
+const PROFILES_KEY = 'alexflix:profiles';
+const SELECTED_KEY = 'alexflix:profile';
+const LEGACY_PROFILES_KEY = 'alexprime:profiles';
+const LEGACY_SELECTED_KEY = 'alexprime:profile';
 
 interface RemoteState {
   profiles?: Profile[];
@@ -73,7 +75,8 @@ if (REMOTE) {
 
 function readLocalProfiles(): Profile[] {
   try {
-    const list = JSON.parse(localStorage.getItem(PROFILES_KEY) ?? 'null') as Profile[] | null;
+    const raw = localStorage.getItem(PROFILES_KEY) ?? localStorage.getItem(LEGACY_PROFILES_KEY);
+    const list = JSON.parse(raw ?? 'null') as Profile[] | null;
     return Array.isArray(list) && list.length > 0 ? list : DEFAULT_PROFILES;
   } catch {
     return DEFAULT_PROFILES;
@@ -138,7 +141,7 @@ export function readSelectedProfile(): string | null {
       window.history.replaceState(null, '', `${window.location.pathname}${search ? `?${search}` : ''}`);
       return fromUrl;
     }
-    return sessionStorage.getItem(SELECTED_KEY);
+    return sessionStorage.getItem(SELECTED_KEY) ?? sessionStorage.getItem(LEGACY_SELECTED_KEY);
   } catch {
     return null;
   }

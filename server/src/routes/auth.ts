@@ -11,7 +11,7 @@ declare module '@fastify/jwt' {
   }
 }
 
-export const COOKIE_NAME = 'ap_session';
+export const COOKIE_NAME = 'alexflix_session';
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 const attempts = new Map<string, { count: number; resetAt: number }>();

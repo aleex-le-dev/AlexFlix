@@ -51,10 +51,10 @@ export async function resolveHomeIps(): Promise<string[]> {
 
 export function vitrineSecrets(): VitrineSecrets {
   const iterations = 150000;
-  const salt = crypto.createHmac('sha256', config.jwtSecret).update('alexprime-vitrine-salt').digest('hex').slice(0, 32);
+  const salt = crypto.createHmac('sha256', config.jwtSecret).update('alexflix-vitrine-salt').digest('hex').slice(0, 32);
   const hash = crypto.pbkdf2Sync(config.vitrinePin, salt, iterations, 32, 'sha256').toString('hex');
-  const secret = crypto.createHmac('sha256', config.jwtSecret).update(`alexprime-vitrine-cookie|${hash}`).digest('hex');
-  const access = crypto.createHmac('sha256', secret).update('alexprime-access-link').digest('hex').slice(0, 40);
+  const secret = crypto.createHmac('sha256', config.jwtSecret).update(`alexflix-vitrine-cookie|${hash}`).digest('hex');
+  const access = crypto.createHmac('sha256', secret).update('alexflix-access-link').digest('hex').slice(0, 40);
   return { hash, salt, iterations, secret, access, days: config.vitrineSessionDays, pinLength: config.vitrinePin.length };
 }
 
@@ -110,7 +110,7 @@ header('X-Robots-Tag: noindex, nofollow');
 
 function ap_sign(int $exp, string $secret): string
 {
-  return hash_hmac('sha256', 'alexprime|' . $exp, $secret);
+  return hash_hmac('sha256', 'alexflix|' . $exp, $secret);
 }
 
 function ap_is_authed(array $cfg, string $cookie): bool

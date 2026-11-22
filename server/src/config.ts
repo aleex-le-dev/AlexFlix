@@ -73,7 +73,7 @@ export const config = {
   homeIps: list('HOME_IPS', ['auto']),
   vitrineSessionDays: int('VITRINE_SESSION_DAYS', 365),
   siteUrl: str('SITE_URL'),
-  freeboxAppId: str('FREEBOX_APP_ID', 'alexprime.app'),
+  freeboxAppId: str('FREEBOX_APP_ID', 'alexflix.app'),
   ftpHost: str('FTP_HOST'),
   ftpPort: int('FTP_PORT', 21),
   ftpUser: str('FTP_USER'),

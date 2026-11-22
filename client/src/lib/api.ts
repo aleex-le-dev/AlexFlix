@@ -1,7 +1,7 @@
 import type { CatalogResponse, MediaFileDTO, MediaItem, MediaType, ScanStatus, StreamInfo } from '../types';
 import { setBaseline } from './format';
 
-export const UNAUTHORIZED_EVENT = 'alexprime:unauthorized';
+export const UNAUTHORIZED_EVENT = 'alexflix:unauthorized';
 export const VITRINE = __VITRINE__;
 
 export class ApiError extends Error {
