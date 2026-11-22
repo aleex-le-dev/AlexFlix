@@ -150,7 +150,7 @@ export class FreeboxClient {
   async listDir(encodedPath: string): Promise<FreeboxEntry[]> {
     const result = await this.request<FreeboxEntry[] | { entries?: FreeboxEntry[] } | undefined>(
       'GET',
-      `/fs/ls/${encodedPath}?removeHidden=1&countSubFolder=0`
+      `/fs/ls/${encodeURIComponent(encodedPath)}?removeHidden=1&countSubFolder=0`
     );
     const entries = Array.isArray(result) ? result : (result?.entries ?? []);
     return entries.filter((entry) => entry.name !== '.' && entry.name !== '..');

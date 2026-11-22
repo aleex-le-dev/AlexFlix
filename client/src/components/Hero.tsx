@@ -1,9 +1,10 @@
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Keyboard, Mousewheel } from 'swiper/modules';
-import { Info, Play } from 'lucide-react';
+import { Info, Play, Star } from 'lucide-react';
 import 'swiper/css';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
+import { formatRating, isUhd, itemMeta } from '../lib/format';
 
 interface Props {
   items: MediaItem[];
@@ -42,7 +43,25 @@ function HeroSlide({ item, active, onPlay, onInfo }: { item: MediaItem; active: 
         <h1 className="line-clamp-2 font-display text-4xl leading-[0.95] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] md:text-6xl xl:text-7xl">
           {item.title}
         </h1>
-        <p className="mt-4 line-clamp-3 max-w-xl text-sm text-neutral-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:text-base xl:text-lg">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-neutral-200 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:text-base">
+          {item.rating > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-black/70 px-2 py-0.5 font-semibold text-amber-400 shadow ring-1 ring-white/15 backdrop-blur-xs">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+              {formatRating(item.rating)}
+            </span>
+          )}
+          {item.categories.length > 0 && (
+            <span className="rounded-md bg-white/15 px-2 py-0.5 font-medium text-white ring-1 ring-white/15 backdrop-blur-xs">
+              {item.categories.join(' · ')}
+            </span>
+          )}
+          {item.year && <span>{item.year}</span>}
+          {itemMeta(item) && <span>{itemMeta(item)}</span>}
+          {isUhd(item) && (
+            <span className="rounded-sm border border-white/60 px-1.5 text-[11px] font-bold leading-5 tracking-wide text-white">4K</span>
+          )}
+        </div>
+        <p className="mt-3 line-clamp-3 max-w-xl text-sm text-neutral-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:text-base xl:text-lg">
           {item.overview || item.tagline}
         </p>
         <div className="mt-6 flex flex-wrap gap-3">

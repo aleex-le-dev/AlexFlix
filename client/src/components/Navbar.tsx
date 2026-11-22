@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, LoaderCircle, LogOut, Pencil, RefreshCw, Search, Sparkles, X } from 'lucide-react';
-import type { Facet, Profile, ScanStatus, Tab } from '../types';
+import type { Profile, ScanStatus, Tab } from '../types';
 import { ProfileAvatar } from './ProfileAvatar';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { FilterBar } from './FilterBar';
+import { FilterBar, type CategorySection } from './FilterBar';
 import { Logo } from './Logo';
 
 interface Props {
@@ -12,9 +12,9 @@ interface Props {
   profiles: Profile[];
   onSwitchProfile: (profileId: string) => void;
   onManageProfiles: () => void;
-  categories: Facet[];
+  categorySections: CategorySection[];
   category: string | null;
-  onCategory: (category: string | null) => void;
+  onCategory: (tab: Tab, category: string) => void;
   tab: Tab;
   onTab: (tab: Tab) => void;
   query: string;
@@ -25,13 +25,12 @@ interface Props {
 }
 
 const TABS: Array<{ id: Tab; label: string }> = [
-  { id: 'home', label: 'Accueil' },
   { id: 'movies', label: 'Films' },
   { id: 'tv', label: 'Séries' },
   { id: 'mylist', label: 'Ma liste' }
 ];
 
-export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, categories, category, onCategory, tab, onTab, query, onQuery, scan, onScan, onLogout }: Props) {
+export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, categorySections, category, onCategory, tab, onTab, query, onQuery, scan, onScan, onLogout }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(query.length > 0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -79,7 +78,7 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
       }`}
     >
       <nav className="flex h-16 items-center gap-3 px-4 md:h-[68px] md:px-12">
-        <button type="button" onClick={() => onTab('home')} className="shrink-0" aria-label="Accueil AlexFlix">
+        <button type="button" onClick={() => onTab('movies')} className="shrink-0" aria-label="Films AlexFlix">
           <Logo size="sm" />
         </button>
 
@@ -94,7 +93,7 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
                 {item.label}
               </button>
               {item.id === 'tv' && tab !== 'mylist' && (
-                <FilterBar nav categories={categories} value={category} onChange={onCategory} />
+                <FilterBar sections={categorySections} value={category} activeTab={tab} onChange={onCategory} />
               )}
             </li>
           ))}
@@ -102,7 +101,7 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
 
         {tab !== 'mylist' && (
           <div className="ml-3 md:hidden">
-            <FilterBar nav categories={categories} value={category} onChange={onCategory} />
+            <FilterBar sections={categorySections} value={category} activeTab={tab} onChange={onCategory} />
           </div>
         )}
 
@@ -140,8 +139,10 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
 
         <div className="ml-auto flex items-center gap-3 md:gap-5">
           <div
-            className={`flex items-center border transition-all duration-300 ${
-              searchOpen ? 'border-white/70 bg-black/70 backdrop-blur' : 'border-transparent'
+            className={`flex h-9 items-center rounded-full transition-all duration-300 ${
+              searchOpen
+                ? 'bg-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.45)] ring-1 ring-white/15 backdrop-blur-xl focus-within:bg-white/15 focus-within:ring-white/35'
+                : 'ring-1 ring-transparent hover:bg-white/10'
             }`}
           >
             <button
@@ -151,9 +152,9 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
                 setSearchOpen(true);
                 inputRef.current?.focus();
               }}
-              className="p-1.5"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
             >
-              <Search className="h-5 w-5" />
+              <Search className={`h-[18px] w-[18px] transition-colors ${searchOpen ? 'text-neutral-300' : 'text-white'}`} />
             </button>
             <input
               ref={inputRef}
@@ -169,15 +170,23 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, c
                   inputRef.current?.blur();
                 }
               }}
-              placeholder="Titres, acteurs, genres, thèmes"
+              placeholder="Film, série, acteur…"
               aria-label="Recherche instantanée"
-              className={`bg-transparent text-sm outline-hidden transition-all duration-300 placeholder:text-neutral-400 ${
-                searchOpen ? 'w-36 pr-2 sm:w-64' : 'w-0'
+              className={`bg-transparent text-sm text-white outline-hidden transition-all duration-300 placeholder:text-neutral-400 ${
+                searchOpen ? 'w-36 pr-3 sm:w-60' : 'w-0'
               }`}
             />
             {query && (
-              <button type="button" aria-label="Effacer la recherche" onClick={() => onQuery('')} className="pr-2">
-                <X className="h-4 w-4" />
+              <button
+                type="button"
+                aria-label="Effacer la recherche"
+                onClick={() => {
+                  onQuery('');
+                  inputRef.current?.focus();
+                }}
+                className="mr-1.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white/15 text-neutral-200 transition hover:bg-white/25 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>

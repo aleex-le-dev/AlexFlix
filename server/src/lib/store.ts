@@ -5,7 +5,8 @@ import type { Catalog, Facet, FileDTO, ItemDTO, MediaFile, MediaItem } from '../
 import { normalizeKey, nowIso } from './utils.js';
 
 export const ROOT_CATEGORY = 'Nouveautés';
-export const SERIES_CATEGORY = 'Séries';
+/** Séries rangées hors des dossiers de genre (dossier Séries ou dossier propre). */
+export const SERIES_CATEGORY = 'Autres séries';
 
 /** Nom de dossier affiché comme catégorie : « DANCE - MUSIQUE » → « Dance - musique », « SF » conservé. */
 export function prettyFolder(name: string): string {
@@ -23,6 +24,81 @@ function topFolder(relPath: string): string | null {
   if (parts.length < 2) return null;
   if (normalizeKey(parts[0]) === normalizeKey(config.moviesDir) && parts.length > 2) return parts[1];
   return parts[0];
+}
+
+const SEASON_FOLDER = /^(saison|season|s)\s*\d+$/i;
+const SMALL_WORDS = new Set(['a', 'à', 'au', 'aux', 'de', 'des', 'du', 'et', 'la', 'le', 'les', 'l', 'd', 'and', 'of', 'the', 'en']);
+const ACRONYMS = new Set(['dc', 'dceu', 'mcu', 'sf', 'usa', 'fbi', 'cia']);
+
+/** Dossier en MAJUSCULES → « Titre De Saga » (petits mots en minuscules sauf en tête). */
+function collectionName(folder: string): string {
+  const clean = folder.replace(/^\s*\d+\s*[-–.]\s*/, '').replace(/\s+/g, ' ').trim();
+  if (clean !== clean.toUpperCase()) return clean;
+  return clean
+    .toLocaleLowerCase('fr')
+    .replace(/[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)*/gu, (word, offset: number) => {
+      if (ACRONYMS.has(word)) return word.toUpperCase();
+      return offset > 0 && SMALL_WORDS.has(word) ? word : word.charAt(0).toLocaleUpperCase('fr') + word.slice(1);
+    });
+}
+
+/** Sous-dossiers sous la catégorie (sagas, collections) : « MARVEL/01 - LA SAGA DE L'INFINI » → « Marvel · La saga de l'infini ». */
+function collectionOf(relPath: string): string {
+  const parts = relPath.split('/').slice(0, -1);
+  if (parts.length > 0 && normalizeKey(parts[0]) === normalizeKey(config.moviesDir)) parts.shift();
+  return parts
+    .slice(1)
+    .filter((part) => !SEASON_FOLDER.test(part.trim()))
+    .map(collectionName)
+    .filter(Boolean)
+    .join(' · ');
+}
+
+/**
+ * Séries posées hors des dossiers de genre : classées d'après TMDB, sans rien déplacer sur le disque.
+ * Franchise (mots-clés) → catégorie + rangée « Marvel · Séries » ; sinon 1er genre TMDB qui a un dossier.
+ */
+const FRANCHISES: Array<{ test: RegExp; folder: string; collection: string }> = [
+  { test: /marvel cinematic universe|based on marvel comics/i, folder: 'fantastique', collection: 'Marvel · Séries' },
+  { test: /dc universe|dc extended universe|based on dc comics/i, folder: 'fantastique', collection: 'DC Comics · Séries' }
+];
+const GENRE_FOLDERS: Record<string, string[]> = {
+  'science fiction': ['sf'],
+  'science fiction & fantastique': ['sf', 'fantastique'],
+  fantastique: ['fantastique'],
+  'action & aventure': ['action', 'aventure'],
+  action: ['action'],
+  aventure: ['aventure'],
+  comedie: ['comedie'],
+  drame: ['drame'],
+  feuilleton: ['drame'],
+  mystere: ['thriller'],
+  crime: ['thriller'],
+  thriller: ['thriller'],
+  animation: ['animation'],
+  musique: ['dance - musique'],
+  guerre: ['histoire vraie'],
+  'guerre & politique': ['histoire vraie'],
+  histoire: ['histoire vraie'],
+  documentaire: ['histoire vraie']
+};
+
+const key = (value: string): string => normalizeKey(value).replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+
+function inferSeries(item: MediaItem, folders: Set<string>): { category: string; collection: string } | null {
+  const byKey = new Map([...folders].map((folder) => [key(folder), folder]));
+  const keywords = item.keywords.join(' | ');
+  for (const franchise of FRANCHISES) {
+    const folder = byKey.get(franchise.folder);
+    if (folder && franchise.test.test(keywords)) return { category: prettyFolder(folder), collection: franchise.collection };
+  }
+  for (const genre of item.genres) {
+    for (const target of GENRE_FOLDERS[key(genre)] ?? [key(genre)]) {
+      const folder = byKey.get(key(target));
+      if (folder) return { category: prettyFolder(folder), collection: '' };
+    }
+  }
+  return null;
 }
 
 export function emptyCatalog(): Catalog {
@@ -120,8 +196,14 @@ export class CatalogStore {
     const top = topFolder(file.relPath);
     if (!top) return ROOT_CATEGORY;
     if (normalizeKey(top) === normalizeKey(config.seriesDir)) return SERIES_CATEGORY;
-    if (item.type === 'tv' && !folders.has(top)) return SERIES_CATEGORY;
+    if (item.type === 'tv' && !folders.has(top)) return inferSeries(item, folders)?.category ?? SERIES_CATEGORY;
     return prettyFolder(top);
+  }
+
+  private collectionFor(file: MediaFile, item: MediaItem, folders: Set<string>): string {
+    const top = topFolder(file.relPath);
+    if (item.type === 'tv' && top && !folders.has(top)) return inferSeries(item, folders)?.collection ?? '';
+    return collectionOf(file.relPath);
   }
 
   toDTO(item: MediaItem, folders: Set<string> = this.categoryFolders()): ItemDTO {
@@ -149,8 +231,17 @@ export class CatalogStore {
         (a, b) =>
           (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0) || a.name.localeCompare(b.name, 'fr')
       );
+    const collections = [
+      ...new Set(
+        item.fileIds
+          .map((id) => this.catalog.files[id])
+          .filter((file) => file !== undefined)
+          .map((file) => this.collectionFor(file, item, folders))
+          .filter(Boolean)
+      )
+    ];
     const { fileIds: _fileIds, ...rest } = item;
-    return { ...rest, files, categories };
+    return { ...rest, files, categories, collections };
   }
 
   list(): ItemDTO[] {

@@ -36,7 +36,7 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
           <button
             type="button"
             onClick={() => row.filter && onExplore(row.filter)}
-            className="translate-x-[-6px] text-xs font-semibold text-[#54b9c5] opacity-0 transition duration-300 group-hover/row:translate-x-0 group-hover/row:opacity-100 md:text-sm"
+            className="text-xs font-semibold text-[#54b9c5] opacity-80 transition duration-300 hover:opacity-100 hover:underline group-hover/row:translate-x-1 group-hover/row:opacity-100 md:text-sm"
           >
             Tout explorer ›
           </button>

@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { FolderSearch, RefreshCw } from 'lucide-react';
 import type { MediaItem, Profile, RowFilter, ScanStatus, Tab } from '../types';
 import { api } from '../lib/api';
-import { buildRows, facetsOf, filterItems, pickFeatured, resumeFileId, sortSearchResults } from '../lib/catalog';
+import { buildRows, facetsOf, filterItems, pickFeatured, rankByRating, resumeFileId, sortSearchResults, TOP_CATEGORY } from '../lib/catalog';
 import { getProgressMap, removeFromContinue, toggleFavorite } from '../lib/storage';
 import { useCatalog } from '../hooks/useCatalog';
 import { useFavorites, useProgress } from '../hooks/useStorage';
@@ -25,14 +25,15 @@ const TAB_TITLES: Record<Tab, string> = {
   mylist: 'Ma liste'
 };
 
-const TABS: Tab[] = ['home', 'movies', 'tv', 'mylist'];
+/** « Accueil » faisait doublon avec « Films » : Films est l'onglet par défaut (?onglet=home → Films). */
+const TABS: Tab[] = ['movies', 'tv', 'mylist'];
 
 /** État de navigation conservé dans l'adresse (?onglet=&categorie=&q=&titre=) pour survivre à une actualisation. */
 function readUrlState(): { tab: Tab; query: string; genre: string | null; selected: string | null } {
   const params = new URLSearchParams(window.location.search);
   const tab = params.get('onglet') as Tab | null;
   return {
-    tab: tab && TABS.includes(tab) ? tab : 'home',
+    tab: tab && TABS.includes(tab) ? tab : 'movies',
     query: params.get('q') ?? '',
     genre: params.get('categorie'),
     selected: params.get('titre')
@@ -62,7 +63,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
   useEffect(() => {
     const params = new URLSearchParams();
-    if (tab !== 'home') params.set('onglet', tab);
+    if (tab !== 'movies') params.set('onglet', tab);
     if (genre) params.set('categorie', genre);
     if (query.trim()) params.set('q', query);
     if (selectedId) params.set('titre', selectedId);
@@ -78,10 +79,20 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
     () => filterItems(items, { tab, genre: null, theme: null, query: '', favorites }),
     [items, tab, favorites]
   );
-  const facets = useMemo(() => facetsOf(tabItems), [tabItems]);
+  /** Menu Catégories : une section Films, une section Séries (dossiers du disque uniquement). */
+  const categorySections = useMemo(
+    () =>
+      (['movies', 'tv'] as const).map((sectionTab) => ({
+        tab: sectionTab,
+        label: sectionTab === 'movies' ? 'Films' : 'Séries',
+        categories: facetsOf(filterItems(items, { tab: sectionTab, genre: null, theme: null, query: '', favorites })).genres
+      })),
+    [items, favorites]
+  );
   const filtered = useMemo(
-    () => filterItems(tabItems, { tab: 'home', genre, theme: null, query: deferredQuery, favorites }),
-    [tabItems, genre, deferredQuery, favorites]
+    // La recherche porte sur tout le catalogue (films + séries), quel que soit l'onglet.
+    () => filterItems(deferredQuery.trim() ? items : tabItems, { tab: 'home', genre, theme: null, query: deferredQuery, favorites }),
+    [items, tabItems, genre, deferredQuery, favorites]
   );
   const featured = useMemo(() => pickFeatured(filtered), [filtered]);
   const rows = useMemo(
@@ -90,7 +101,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   );
 
   const searching = deferredQuery.trim().length > 0;
-  const showGrid = searching || tab === 'mylist';
+  const showGrid = searching || tab === 'mylist' || genre === TOP_CATEGORY;
   const showHero = !showGrid && featured.length > 0;
 
   useEffect(() => {
@@ -222,7 +233,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
           {showGrid ? (
             <Grid
               title={gridTitle}
-              items={searching ? sortSearchResults(filtered, deferredQuery) : filtered}
+              items={searching ? sortSearchResults(filtered, deferredQuery) : genre === TOP_CATEGORY ? rankByRating(filtered) : filtered}
               progress={progress}
               favorites={favorites}
               emptyLabel={
@@ -260,10 +271,11 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
     <div className="min-h-screen overflow-x-clip bg-ap-bg pb-24">
       <AmbientBackdrop />
       <Navbar
-        categories={facets.genres}
+        categorySections={categorySections}
         category={genre}
-        onCategory={(value) => {
+        onCategory={(nextTab, value) => {
           setQuery('');
+          setTab(nextTab);
           setGenre(value);
         }}
         tab={tab}

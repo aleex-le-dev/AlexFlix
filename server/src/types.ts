@@ -105,7 +105,7 @@ export interface FileDTO {
   addedAt: string;
 }
 
-export type ItemDTO = Omit<MediaItem, 'fileIds'> & { files: FileDTO[]; categories: string[] };
+export type ItemDTO = Omit<MediaItem, 'fileIds'> & { files: FileDTO[]; categories: string[]; collections: string[] };
 
 export interface Facet {
   name: string;

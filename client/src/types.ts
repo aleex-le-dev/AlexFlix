@@ -55,6 +55,8 @@ export interface MediaItem {
   genres: string[];
   /** Catégories = dossiers de premier niveau du disque Freebox (classement de l'utilisateur). */
   categories: string[];
+  /** Sous-dossiers sous la catégorie (sagas) : « Marvel · La Saga de l'Infini ». */
+  collections?: string[];
   keywords: string[];
   cast: string[];
   directors: string[];

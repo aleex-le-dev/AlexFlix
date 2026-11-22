@@ -84,7 +84,7 @@ export default function App() {
   return (
     <AnimatePresence mode="wait">
       {current ? (
-        <motion.div key={`browse-${current.id}`} initial={{ opacity: 0, scale: 1.04 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45 }}>
+        <motion.div key={`browse-${current.id}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }}>
           <Browse
             profile={current}
             profiles={profiles}
