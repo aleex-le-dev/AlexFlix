@@ -8,6 +8,7 @@ import { getProgressMap, removeFromContinue, toggleFavorite } from '../lib/stora
 import { useCatalog } from '../hooks/useCatalog';
 import { useFavorites, useProgress } from '../hooks/useStorage';
 import { Navbar } from '../components/Navbar';
+import { AmbientBackdrop } from '../components/AmbientBackdrop';
 import { Hero } from '../components/Hero';
 import { Row } from '../components/Row';
 import { Grid } from '../components/Grid';
@@ -206,7 +207,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
     }
 
     return (
-      <main className="relative">
+      <main className="relative z-[1]">
         {showHero ? (
           <Hero
             items={featured}
@@ -257,6 +258,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
   return (
     <div className="min-h-screen overflow-x-clip bg-ap-bg pb-24">
+      <AmbientBackdrop />
       <Navbar
         categories={facets.genres}
         category={genre}
@@ -279,7 +281,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
       {renderContent()}
 
-      <footer className="mt-16 px-4 text-xs text-neutral-600 md:px-12">
+      <footer className="relative z-[1] mt-16 px-4 text-xs text-neutral-600 md:px-12">
         <p>AlexFlix · Bibliothèque personnelle Freebox</p>
       </footer>
 

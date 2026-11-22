@@ -2,7 +2,8 @@ import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'rea
 import { Check, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
-import { formatRating, isRecent, itemMeta } from '../lib/format';
+import { hideAmbient, showAmbient } from '../lib/ambient';
+import { formatRating, isRecent, isUhd, itemMeta } from '../lib/format';
 
 interface Props {
   item: MediaItem;
@@ -35,9 +36,11 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
 
   const onEnter = (): void => {
     ref.current?.style.setProperty('--s', '1.1');
+    if (poster && !broken) showAmbient(poster);
   };
 
   const onLeave = (): void => {
+    hideAmbient();
     const element = ref.current;
     if (!element) return;
     element.style.setProperty('--rx', '0deg');
@@ -81,7 +84,7 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
             decoding="async"
             draggable={false}
             onError={() => setBroken(true)}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition duration-500 group-hover/card:brightness-[0.55] group-focus-within/card:brightness-[0.55]"
           />
         ) : (
           <div className="flex h-full w-full flex-col justify-end bg-linear-to-br from-[#3a0a0e] via-neutral-900 to-black p-3">
@@ -106,7 +109,7 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
           </span>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 translate-y-3 bg-linear-to-t from-black via-black/85 to-transparent p-2.5 pt-12 opacity-0 transition duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:opacity-100">
+        <div className="absolute inset-0 flex translate-y-3 flex-col justify-end bg-linear-to-t from-black/90 via-black/40 to-black/10 p-2.5 opacity-0 transition duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:opacity-100">
           <div className="mb-2 flex items-center gap-1.5">
             <button
               type="button"
@@ -146,8 +149,14 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
             )}
             {item.year && <span>{item.year}</span>}
             {meta && <span>{meta}</span>}
+            {isUhd(item) && (
+              <span className="rounded-sm border border-white/50 px-1 text-[9px] font-bold leading-[14px] tracking-wide text-white">4K</span>
+            )}
           </div>
           {item.genres.length > 0 && <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-400">{item.genres.slice(0, 3).join(' • ')}</p>}
+          {item.overview && (
+            <p className="mt-1.5 line-clamp-4 text-[11px] leading-snug text-neutral-200 sm:line-clamp-6 xl:line-clamp-8">{item.overview}</p>
+          )}
         </div>
 
         {progress > 0 && (

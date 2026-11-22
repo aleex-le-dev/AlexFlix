@@ -47,7 +47,11 @@ export function itemMeta(item: MediaItem): string {
   return formatRuntime(item.runtime);
 }
 
-export const formatRating = (rating: number): string => (rating > 0 ? rating.toFixed(1) : '');
+/** 4K d'après le nom des fichiers sur la Freebox : « 4k » (dont 4KLight) ou « 2160p ». */
+const UHD_PATTERN = /(^|[^a-z0-9])(4k|2160p)/i;
+export const isUhd = (item: MediaItem): boolean => item.files.some((file) => UHD_PATTERN.test(file.name));
+
+export const formatRating =(rating: number): string => (rating > 0 ? rating.toFixed(1) : '');
 
 export const matchPercent = (rating: number): number => Math.round(rating * 10);
 
