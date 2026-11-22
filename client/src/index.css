@@ -62,6 +62,36 @@ button:disabled {
   z-index: 30;
 }
 
+/* Rangées à carte extensible (façon Netflix) : la carte survolée prend la place de deux. */
+.ap-track {
+  --pad: 16px;
+  --gap: 8px;
+  --per: 2.3;
+  container-type: inline-size;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.ap-track::-webkit-scrollbar {
+  display: none;
+}
+@media (min-width: 640px) { .ap-track { --per: 3.3; } }
+@media (min-width: 768px) { .ap-track { --pad: 48px; } }
+@media (min-width: 900px) { .ap-track { --per: 4.3; } }
+@media (min-width: 1200px) { .ap-track { --per: 5.3; } }
+@media (min-width: 1600px) { .ap-track { --per: 6.3; } }
+@media (min-width: 2000px) { .ap-track { --per: 7.3; } }
+.ap-slot {
+  --w: calc((100cqw - var(--pad) - (var(--per) - 1) * var(--gap)) / var(--per));
+  width: var(--w);
+  height: calc(var(--w) * 1.5);
+  flex: none;
+  transition: width 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ap-slot[data-wide='true'] {
+  width: calc(var(--w) * 2 + var(--gap));
+  z-index: 20;
+}
+
 /* Carte tilt 3D */
 .tilt-card {
   transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) scale(var(--s, 1));

@@ -1,4 +1,5 @@
 import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { motion } from 'framer-motion';
 import { Check, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
@@ -14,15 +15,33 @@ interface Props {
   onToggleFavorite: (id: string) => void;
   /** Présent dans la rangée « Reprendre la lecture » : bouton ✕ pour retirer le titre. */
   onRemove?: (id: string) => void;
+  /**
+   * Carte de rangée extensible (ordinateur) : remplit son emplacement, sans effet 3D ;
+   * les infos n'apparaissent que lorsqu'elle est élargie (`wide`) au format paysage.
+   */
+  expandable?: boolean;
+  wide?: boolean;
 }
 
-export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorite, onOpen, onPlay, onToggleFavorite, onRemove }: Props) {
+export const MediaCard = memo(function MediaCard({
+  item,
+  progress = 0,
+  isFavorite,
+  onOpen,
+  onPlay,
+  onToggleFavorite,
+  onRemove,
+  expandable = false,
+  wide = false
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [broken, setBroken] = useState(false);
   const poster = imageUrl(item.poster);
+  const backdrop = imageUrl(item.backdrop);
   const meta = itemMeta(item);
 
   const onMove = (event: MouseEvent<HTMLDivElement>): void => {
+    if (expandable) return;
     const element = ref.current;
     if (!element) return;
     const rect = element.getBoundingClientRect();
@@ -35,7 +54,7 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
   };
 
   const onEnter = (): void => {
-    ref.current?.style.setProperty('--s', '1.1');
+    if (!expandable) ref.current?.style.setProperty('--s', '1.1');
     if (poster && !broken) showAmbient(poster);
   };
 
@@ -60,8 +79,15 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
     handler();
   };
 
+  /** Classes « visible au survol » (grille) ou « visible si élargie » (rangée). */
+  const reveal = expandable
+    ? wide
+      ? 'opacity-100 translate-y-0 delay-200'
+      : 'pointer-events-none opacity-0 translate-y-3'
+    : 'opacity-0 translate-y-3 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:opacity-100';
+
   return (
-    <div className="group/card relative">
+    <div className={`group/card relative ${expandable ? 'h-full' : ''}`}>
       <div
         ref={ref}
         role="button"
@@ -74,7 +100,11 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
         onMouseLeave={onLeave}
         onFocus={onEnter}
         onBlur={onLeave}
-        className="tilt-card relative aspect-[2/3] cursor-pointer overflow-hidden rounded-md bg-neutral-800 shadow-lg ring-1 ring-white/5 outline-hidden group-hover/card:shadow-[0_24px_60px_rgba(0,0,0,0.85)] group-hover/card:ring-white/25 focus-visible:ring-2 focus-visible:ring-white"
+        className={`relative cursor-pointer overflow-hidden rounded-md bg-neutral-800 shadow-lg ring-1 ring-white/5 outline-hidden transition-shadow duration-500 focus-visible:ring-2 focus-visible:ring-white ${
+          expandable
+            ? `h-full w-full ${wide ? 'shadow-[0_24px_60px_rgba(0,0,0,0.85)] ring-white/25' : ''}`
+            : 'tilt-card aspect-[2/3] group-hover/card:shadow-[0_24px_60px_rgba(0,0,0,0.85)] group-hover/card:ring-white/25'
+        }`}
       >
         {poster && !broken ? (
           <img
@@ -84,7 +114,9 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
             decoding="async"
             draggable={false}
             onError={() => setBroken(true)}
-            className="h-full w-full object-cover transition duration-500 group-hover/card:brightness-[0.55] group-focus-within/card:brightness-[0.55]"
+            className={`h-full w-full object-cover transition duration-500 ${
+              expandable ? '' : 'group-hover/card:brightness-[0.55] group-focus-within/card:brightness-[0.55]'
+            }`}
           />
         ) : (
           <div className="flex h-full w-full flex-col justify-end bg-linear-to-br from-[#3a0a0e] via-neutral-900 to-black p-3">
@@ -94,22 +126,42 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
           </div>
         )}
 
-        <div className="tilt-glare pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
+        {/* Format paysage : visuel large du film en fondu par-dessus l'affiche. */}
+        {wide && (backdrop || poster) && (
+          <motion.img
+            src={backdrop ?? poster ?? undefined}
+            alt=""
+            draggable={false}
+            initial={{ opacity: 0, scale: 1.06 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className={`absolute inset-0 h-full w-full object-cover ${backdrop ? '' : 'object-[50%_20%]'}`}
+          />
+        )}
+
+        {!expandable && (
+          <div className="tilt-glare pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
+        )}
 
         {isRecent(item.addedAt) && (
-          <span className="absolute left-0 top-2 rounded-r bg-ap-red px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
+          <span className="absolute left-0 top-2 z-10 rounded-r bg-ap-red px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
             Nouveau
           </span>
         )}
 
         {item.rating > 0 && (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-amber-400 backdrop-blur-xs ring-1 ring-white/15 shadow">
+          <span className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-amber-400 backdrop-blur-xs ring-1 ring-white/15 shadow">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
             {formatRating(item.rating)}
           </span>
         )}
 
-        <div className="absolute inset-0 flex translate-y-3 flex-col justify-end bg-linear-to-t from-black/90 via-black/40 to-black/10 p-2.5 opacity-0 transition duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:opacity-100">
+        <div
+          className={`absolute inset-0 flex flex-col justify-end bg-linear-to-t transition duration-300 ${
+            wide ? 'from-black via-black/60 to-transparent p-4' : 'from-black/90 via-black/40 to-black/10 p-2.5'
+          } ${reveal}`}
+        >
+          {wide && <p className="mb-2 line-clamp-2 font-display text-2xl leading-none text-white drop-shadow-lg xl:text-3xl">{item.title}</p>}
           <div className="mb-2 flex items-center gap-1.5">
             <button
               type="button"
@@ -139,7 +191,7 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
               </button>
             )}
           </div>
-          <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>
+          {!wide && <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>}
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-neutral-300">
             {item.rating > 0 && (
               <span className="inline-flex items-center gap-1 font-semibold text-amber-400">
@@ -155,11 +207,17 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
           </div>
           {item.genres.length > 0 && <p className="mt-0.5 line-clamp-1 text-[11px] text-neutral-400">{item.genres.slice(0, 3).join(' • ')}</p>}
           {item.overview && (
-            <p className="mt-1.5 line-clamp-4 text-[11px] leading-snug text-neutral-200 sm:line-clamp-6 xl:line-clamp-8">{item.overview}</p>
+            <p
+              className={`mt-1.5 text-[11px] leading-snug text-neutral-200 ${
+                wide ? 'line-clamp-3 xl:line-clamp-4 xl:text-xs' : 'line-clamp-4 sm:line-clamp-6 xl:line-clamp-8'
+              }`}
+            >
+              {item.overview}
+            </p>
           )}
         </div>
 
-        {progress > 0 && (
+        {progress > 0 && !wide && (
           <div className="absolute inset-x-2 bottom-2 h-1 overflow-hidden rounded bg-white/25 transition-opacity group-hover/card:opacity-0">
             <div className="h-full rounded bg-ap-red" style={{ width: `${Math.round(progress * 100)}%` }} />
           </div>
