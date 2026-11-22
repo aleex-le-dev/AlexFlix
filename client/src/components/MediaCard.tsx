@@ -1,5 +1,5 @@
 import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Check, Play, Plus, Star } from 'lucide-react';
+import { Check, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
 import { formatRating, isRecent, itemMeta } from '../lib/format';
@@ -11,9 +11,11 @@ interface Props {
   onOpen: (item: MediaItem) => void;
   onPlay: (item: MediaItem) => void;
   onToggleFavorite: (id: string) => void;
+  /** Présent dans la rangée « Reprendre la lecture » : bouton ✕ pour retirer le titre. */
+  onRemove?: (id: string) => void;
 }
 
-export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorite, onOpen, onPlay, onToggleFavorite }: Props) {
+export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorite, onOpen, onPlay, onToggleFavorite, onRemove }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [broken, setBroken] = useState(false);
   const poster = imageUrl(item.poster);
@@ -122,6 +124,17 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
             >
               {isFavorite ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             </button>
+            {onRemove && (
+              <button
+                type="button"
+                aria-label="Retirer de Reprendre la lecture"
+                title="Retirer de Reprendre la lecture"
+                onClick={stop(() => onRemove(item.id))}
+                className="ml-auto grid h-8 w-8 place-items-center rounded-full border-2 border-white/60 bg-black/40 text-white transition hover:border-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
           <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-neutral-300">

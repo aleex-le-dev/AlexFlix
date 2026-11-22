@@ -69,6 +69,7 @@ export const config = {
   freeboxUrl:str('FREEBOX_URL', 'http://mafreebox.freebox.fr').replace(/\/+$/, ''),
   freeboxMediaRoot: str('FREEBOX_MEDIA_ROOT', '/Disque dur/Vidéos').replace(/\\/g, '/').replace(/\/+$/, ''),
   freeboxLinkDays: int('FREEBOX_LINK_DAYS', 365),
+  freeboxDomain: str('FREEBOX_DOMAIN').toLowerCase(),
   vitrinePin: str('VITRINE_PIN'),
   homeIps: list('HOME_IPS', ['auto']),
   vitrineSessionDays: int('VITRINE_SESSION_DAYS', 365),

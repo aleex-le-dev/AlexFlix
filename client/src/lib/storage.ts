@@ -151,6 +151,24 @@ export function saveProgress(entry: ProgressEntry, notify = true): void {
   sync?.progress(activeProfile, entry);
 }
 
+/**
+ * Retire un titre de « Reprendre la lecture » : sa progression repart à 0 avec une date récente,
+ * ce qui se propage aux autres appareils (la plus récente gagne). Relancer le titre le fait revenir.
+ */
+export function removeFromContinue(itemId: string): void {
+  const map = { ...getProgressMap() };
+  const now = Date.now();
+  let changed = false;
+  for (const entry of Object.values(map)) {
+    if (entry.itemId !== itemId || entry.position === 0) continue;
+    const reset = { ...entry, position: 0, updatedAt: now };
+    map[entry.fileId] = reset;
+    sync?.progress(activeProfile, reset);
+    changed = true;
+  }
+  if (changed) write(progressKey(), map);
+}
+
 /** Remplace les données locales d'un profil par celles du serveur (progression fusionnée, la plus récente gagne). */
 export function hydrateProfile(profileId: string, favorites: string[] | undefined, progress: Record<string, ProgressEntry> | undefined): void {
   if (favorites) write(favoritesKey(profileId), favorites, false);

@@ -4,7 +4,7 @@ import { FolderSearch, RefreshCw } from 'lucide-react';
 import type { MediaItem, Profile, RowFilter, ScanStatus, Tab } from '../types';
 import { api } from '../lib/api';
 import { buildRows, facetsOf, filterItems, pickFeatured, resumeFileId, sortSearchResults } from '../lib/catalog';
-import { getProgressMap, toggleFavorite } from '../lib/storage';
+import { getProgressMap, removeFromContinue, toggleFavorite } from '../lib/storage';
 import { useCatalog } from '../hooks/useCatalog';
 import { useFavorites, useProgress } from '../hooks/useStorage';
 import { Navbar } from '../components/Navbar';
@@ -140,6 +140,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
   const playDefault = useCallback((item: MediaItem) => play(item), [play]);
   const toggleFav = useCallback((id: string) => toggleFavorite(id), []);
+  const removeContinue = useCallback((id: string) => removeFromContinue(id), []);
 
   const explore = useCallback((filter: RowFilter) => {
     if (filter.genre) setGenre(filter.genre);
@@ -243,6 +244,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
                 onPlay={playDefault}
                 onToggleFavorite={toggleFav}
                 onExplore={explore}
+                onRemove={row.id === 'continue' ? removeContinue : undefined}
               />
             ))
           ) : (
@@ -293,6 +295,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
             onClose={closeItem}
             onPlay={play}
             onToggleFavorite={toggleFav}
+            onRemoveProgress={removeContinue}
             onSelect={openItem}
             onFilterGenre={filterGenre}
             onRematched={() => {

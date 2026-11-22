@@ -17,12 +17,13 @@ interface Props {
   onPlay: (item: MediaItem) => void;
   onToggleFavorite: (id: string) => void;
   onExplore: (filter: RowFilter) => void;
+  onRemove?: (id: string) => void;
 }
 
 const NAV_BUTTON =
   'absolute bottom-6 top-6 z-40 hidden w-10 items-center justify-center bg-black/55 text-white opacity-0 transition duration-300 hover:bg-black/75 group-hover/row:opacity-100 md:flex md:w-12 [&.swiper-button-disabled]:pointer-events-none [&.swiper-button-disabled]:!opacity-0';
 
-export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay, onToggleFavorite, onExplore }: Props) {
+export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay, onToggleFavorite, onExplore, onRemove }: Props) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const prevClass = `ap-prev-${uid}`;
   const nextClass = `ap-next-${uid}`;
@@ -74,6 +75,7 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
                 onOpen={onOpen}
                 onPlay={onPlay}
                 onToggleFavorite={onToggleFavorite}
+                onRemove={onRemove}
               />
             </SwiperSlide>
           ))}

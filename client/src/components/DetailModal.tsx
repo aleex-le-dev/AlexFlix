@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Clapperboard, Download, ImageOff, Play, Plus, Star, X } from 'lucide-react';
+import { Check, Clapperboard, Download, ImageOff, ListX, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaFileDTO, MediaItem, MediaType } from '../types';
 import { api, downloadUrl, imageUrl } from '../lib/api';
 
@@ -36,6 +36,7 @@ interface Props {
   onClose: () => void;
   onPlay: (item: MediaItem, fileId?: string) => void;
   onToggleFavorite: (id: string) => void;
+  onRemoveProgress: (id: string) => void;
   onSelect: (item: MediaItem) => void;
   onFilterGenre: (genre: string) => void;
   onRematched: () => void;
@@ -50,6 +51,7 @@ export function DetailModal({
   onClose,
   onPlay,
   onToggleFavorite,
+  onRemoveProgress,
   onSelect,
   onFilterGenre,
   onRematched
@@ -207,6 +209,17 @@ export function DetailModal({
                   >
                     {isFavorite ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                   </button>
+                  {resuming && (
+                    <button
+                      type="button"
+                      aria-label="Retirer de Reprendre la lecture"
+                      title="Retirer de Reprendre la lecture"
+                      onClick={() => onRemoveProgress(item.id)}
+                      className="grid h-10 w-10 place-items-center rounded-full border-2 border-white/50 bg-black/40 text-white transition hover:border-white"
+                    >
+                      <ListX className="h-5 w-5" />
+                    </button>
+                  )}
                   {item.trailer && (
                     <button
                       type="button"

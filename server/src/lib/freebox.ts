@@ -40,6 +40,13 @@ export interface ShareLink {
   fullurl: string;
 }
 
+interface OwnedDomain {
+  id: string;
+  type: string;
+  owner: string;
+  certs?: Record<string, { status: string; days_left?: number }>;
+}
+
 const APP = {
   app_id: config.freeboxAppId,
   app_name: 'AlexFlix',
@@ -53,6 +60,7 @@ export class FreeboxClient {
   private base = '';
   private session = '';
   private discovery: Discovery | null = null;
+  private shareDomain: string | null = null;
 
   constructor(private readonly log: (message: string) => void = console.log) {}
 
@@ -165,7 +173,30 @@ export class FreeboxClient {
     await this.request('DELETE', `/share_link/${token}`);
   }
 
+  /**
+   * Domaine HTTPS au certificat reconnu par les navigateurs (Let's Encrypt, *.freeboxos.fr).
+   * Le domaine automatique *.fbxos.fr est signé par la CA Freebox : refusé par les navigateurs,
+   * et les liens http:// sont bloqués comme contenu mixte sur le site HTTPS.
+   */
+  async resolveShareDomain(): Promise<string | null> {
+    if (config.freeboxDomain) return (this.shareDomain = config.freeboxDomain);
+    const owned = await this.request<OwnedDomain[] | undefined>('GET', '/domain/owned/').catch(() => undefined);
+    const issued = (owned ?? []).filter(
+      (domain) => domain.type !== 'auto' && Object.values(domain.certs ?? {}).some((cert) => cert.status === 'issued')
+    );
+    this.shareDomain = issued[0]?.id ?? null;
+    return this.shareDomain;
+  }
+
+  shareUrl(token: string, name: string): string | null {
+    const port = this.discovery?.https_port;
+    if (!this.shareDomain || !port) return null;
+    return `https://${this.shareDomain}:${port}/share/${token}/${encodeURIComponent(name)}`;
+  }
+
   publicUrl(link: ShareLink): string {
+    const secure = this.shareUrl(link.token, link.name);
+    if (secure) return secure;
     if (link.fullurl) return link.fullurl;
     const domain = this.discovery?.api_domain;
     const port = this.discovery?.https_port;

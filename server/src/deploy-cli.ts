@@ -72,6 +72,15 @@ if (!skipLinks) {
   const freebox = new FreeboxClient(log);
   await freebox.open();
   try {
+    const domain = await freebox.resolveShareDomain();
+    if (domain) {
+      log(`Liens HTTPS servis par ${domain}.`);
+    } else {
+      console.warn(
+        '\n[deploy] ⚠ Aucun domaine Freebox avec certificat valide : les vidéos ne pourront pas être lues dans le navigateur (lien http bloqué sur un site https).\n' +
+          '          Freebox OS → Paramètres de la Freebox → Nom de domaine → Ajouter (ex : alexflix.freeboxos.fr), attendre le certificat, puis relancer le deploy.\n'
+      );
+    }
     const remote = new Set((await freebox.listShareLinks()).map((link) => link.token));
     const now = Math.floor(Date.now() / 1000);
     const expire = config.freeboxLinkDays > 0 ? now + config.freeboxLinkDays * 86400 : 0;
@@ -89,6 +98,7 @@ if (!skipLinks) {
         remote.has(previous.token) &&
         (previous.expire === 0 || previous.expire - now > renewMargin);
       if (stillValid) {
+        previous.url = freebox.shareUrl(previous.token, path.posix.basename(previous.relPath)) ?? previous.url;
         kept++;
       } else {
         try {
