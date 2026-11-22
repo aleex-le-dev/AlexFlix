@@ -1,8 +1,8 @@
 import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Check, Play, Plus } from 'lucide-react';
+import { Check, Play, Plus, Star } from 'lucide-react';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
-import { isRecent, itemMeta, matchPercent } from '../lib/format';
+import { formatRating, isRecent, itemMeta } from '../lib/format';
 
 interface Props {
   item: MediaItem;
@@ -97,6 +97,13 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
           </span>
         )}
 
+        {item.rating > 0 && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded bg-black/70 px-1.5 py-0.5 text-[11px] font-semibold text-amber-400 backdrop-blur-xs ring-1 ring-white/15 shadow">
+            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+            {formatRating(item.rating)}
+          </span>
+        )}
+
         <div className="absolute inset-x-0 bottom-0 translate-y-3 bg-linear-to-t from-black via-black/85 to-transparent p-2.5 pt-12 opacity-0 transition duration-300 group-hover/card:translate-y-0 group-hover/card:opacity-100 group-focus-within/card:translate-y-0 group-focus-within/card:opacity-100">
           <div className="mb-2 flex items-center gap-1.5">
             <button
@@ -118,7 +125,12 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
           </div>
           <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>
           <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[11px] text-neutral-300">
-            {item.rating > 0 && <span className="font-semibold text-emerald-400">{matchPercent(item.rating)} %</span>}
+            {item.rating > 0 && (
+              <span className="inline-flex items-center gap-1 font-semibold text-amber-400">
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                {formatRating(item.rating)}
+              </span>
+            )}
             {item.year && <span>{item.year}</span>}
             {meta && <span>{meta}</span>}
           </div>

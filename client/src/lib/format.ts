@@ -47,6 +47,8 @@ export function itemMeta(item: MediaItem): string {
   return formatRuntime(item.runtime);
 }
 
+export const formatRating = (rating: number): string => (rating > 0 ? rating.toFixed(1) : '');
+
 export const matchPercent = (rating: number): number => Math.round(rating * 10);
 
 export const capitalize = (value: string): string => (value ? value.charAt(0).toUpperCase() + value.slice(1) : value);

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Clapperboard, Download, ImageOff, Play, Plus, X } from 'lucide-react';
+import { Check, Clapperboard, Download, ImageOff, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaFileDTO, MediaItem, MediaType } from '../types';
 import { api, downloadUrl, imageUrl } from '../lib/api';
 
@@ -24,7 +24,7 @@ function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: 
   );
 }
 import { itemProgress, progressRatio, resumeFileId } from '../lib/catalog';
-import { capitalize, episodeLabel, formatSize, itemMeta, matchPercent } from '../lib/format';
+import { capitalize, episodeLabel, formatRating, formatSize, itemMeta } from '../lib/format';
 import type { ProgressEntry } from '../lib/storage';
 
 interface Props {
@@ -248,7 +248,13 @@ export function DetailModal({
         <div className="grid gap-6 px-6 py-6 md:grid-cols-[2fr_1fr] md:px-12">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-300">
-              {item.rating > 0 && <span className="font-semibold text-emerald-400">Recommandé à {matchPercent(item.rating)} %</span>}
+              {item.rating > 0 && (
+                <span className="inline-flex items-center gap-1.5 font-semibold text-amber-400">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                  <span>{formatRating(item.rating)} / 10</span>
+                  {item.voteCount > 0 && <span className="font-normal text-neutral-400">({item.voteCount.toLocaleString('fr-FR')} votes TMDB)</span>}
+                </span>
+              )}
               {item.year && <span>{item.year}</span>}
               {itemMeta(item) && <span>{itemMeta(item)}</span>}
               <span className="rounded border border-white/40 px-1.5 text-[11px] uppercase">{item.type === 'tv' ? 'Série' : 'Film'}</span>
