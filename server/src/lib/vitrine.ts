@@ -196,7 +196,7 @@ main{display:flex;flex-direction:column;align-items:center;justify-content:cente
 h1{margin:0;font-size:clamp(34px,5vw,58px);font-weight:500;color:#fff}
 .profile{margin-top:40px;display:flex;flex-direction:column;align-items:center;gap:14px;background:none;border:0;cursor:pointer;color:#808080;font:inherit}
 .avatar{width:clamp(110px,12vw,160px);height:clamp(110px,12vw,160px);border-radius:6px;overflow:hidden;outline:3px solid transparent;transition:outline-color .2s}
-.avatar svg{display:block;width:100%;height:100%}
+.avatar img{display:block;width:100%;height:100%;object-fit:cover}
 .profile:hover .avatar,.profile:focus-visible .avatar{outline-color:#fff}
 .profile:hover .name,.profile:focus-visible .name{color:#fff}
 .name{font-size:clamp(16px,1.6vw,21px);transition:color .2s}
@@ -221,7 +221,7 @@ h2{margin:0 0 34px;max-width:640px;text-align:center;font-size:clamp(22px,3vw,36
 <main>
 <h1>Qui est-ce ?</h1>
 <button class="profile" id="alex" type="button" autofocus>
-<span class="avatar"><svg viewBox="0 0 100 100" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3b47"/><stop offset=".55" stop-color="#e50914"/><stop offset="1" stop-color="#7a0510"/></linearGradient></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="34" cy="40" r="6" fill="#fff"/><circle cx="66" cy="40" r="6" fill="#fff"/><path d="M28 62 Q50 82 72 62" stroke="#fff" stroke-width="6" stroke-linecap="round" fill="none"/></svg></span>
+<span class="avatar"><img src="/avatar.jpg" alt="" draggable="false"></span>
 <span class="name">Alex</span>
 <svg class="padlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Profil verrouillé"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
 </button>
@@ -330,7 +330,8 @@ if ($path === '/__login') {
   ap_login_page($cfg, 'Code PIN incorrect. Veuillez réessayer.', 401);
 }
 
-if (!ap_is_authed($cfg, $cookie) && !ap_is_home($cfg)) {
+$public = ['/avatar.jpg', '/favicon.svg'];
+if (!in_array($path, $public, true) && !ap_is_authed($cfg, $cookie) && !ap_is_home($cfg)) {
   $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
   if ($ext === '' || $ext === 'html') ap_login_page($cfg, null, 200);
   http_response_code(401);

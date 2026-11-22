@@ -6,21 +6,7 @@ interface Props {
 }
 
 function Avatar() {
-  return (
-    <svg viewBox="0 0 100 100" className="h-full w-full" aria-hidden="true">
-      <defs>
-        <linearGradient id="ap-avatar" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#ff3b47" />
-          <stop offset="0.55" stopColor="#e50914" />
-          <stop offset="1" stopColor="#7a0510" />
-        </linearGradient>
-      </defs>
-      <rect width="100" height="100" fill="url(#ap-avatar)" />
-      <circle cx="34" cy="40" r="6" fill="#fff" />
-      <circle cx="66" cy="40" r="6" fill="#fff" />
-      <path d="M28 62 Q50 82 72 62" stroke="#fff" strokeWidth="6" strokeLinecap="round" fill="none" />
-    </svg>
-  );
+  return <img src="/avatar.jpg" alt="" className="h-full w-full object-cover" draggable={false} />;
 }
 
 export function Profiles({ onSelect }: Props) {

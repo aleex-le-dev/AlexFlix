@@ -186,9 +186,7 @@ export function Navbar({ categories, category, onCategory, tab, onTab, query, on
               className="flex items-center gap-1.5"
               aria-label="Menu du profil"
             >
-              <span className="grid h-8 w-8 place-items-center rounded bg-linear-to-br from-ap-red to-[#5c0309] font-display text-xl text-white shadow-lg">
-                A
-              </span>
+              <img src="/avatar.jpg" alt="Profil Alex" className="h-8 w-8 rounded object-cover shadow-lg" draggable={false} />
               <ChevronDown className={`hidden h-4 w-4 transition-transform sm:block ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
