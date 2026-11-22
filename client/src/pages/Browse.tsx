@@ -1,7 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { FolderSearch, RefreshCw } from 'lucide-react';
-import type { MediaItem, RowFilter, ScanStatus, Tab } from '../types';
+import type { MediaItem, Profile, RowFilter, ScanStatus, Tab } from '../types';
 import { api } from '../lib/api';
 import { buildRows, facetsOf, filterItems, pickFeatured, resumeFileId, sortSearchResults } from '../lib/catalog';
 import { getProgressMap, toggleFavorite } from '../lib/storage';
@@ -38,7 +38,15 @@ function readUrlState(): { tab: Tab; query: string; genre: string | null; select
   };
 }
 
-export function Browse({ onLogout }: { onLogout: () => void }) {
+interface BrowseProps {
+  profile: Profile;
+  profiles: Profile[];
+  onSwitchProfile: (profileId: string) => void;
+  onManageProfiles: () => void;
+  onLogout: () => void;
+}
+
+export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, onLogout }: BrowseProps) {
   const [initial] = useState(readUrlState);
   const { data, loading, error, reload } = useCatalog();
   const favorites = useFavorites();
@@ -144,11 +152,6 @@ export function Browse({ onLogout }: { onLogout: () => void }) {
     setGenre(value);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
-
-  const logout = useCallback(async () => {
-    await api.logout().catch(() => undefined);
-    onLogout();
-  }, [onLogout]);
 
   const selected = selectedId ? (byId.get(selectedId) ?? null) : null;
   const playingItem = playing ? (byId.get(playing.itemId) ?? null) : null;
@@ -265,13 +268,17 @@ export function Browse({ onLogout }: { onLogout: () => void }) {
         onQuery={setQuery}
         scan={scan}
         onScan={(full) => void startScan(full)}
-        onLogout={() => void logout()}
+        profile={profile}
+        profiles={profiles}
+        onSwitchProfile={onSwitchProfile}
+        onManageProfiles={onManageProfiles}
+        onLogout={onLogout}
       />
 
       {renderContent()}
 
       <footer className="mt-16 px-4 text-xs text-neutral-600 md:px-12">
-        <p>Alex Prime · Bibliothèque personnelle Freebox</p>
+        <p>AlexFlix · Bibliothèque personnelle Freebox</p>
       </footer>
 
       <AnimatePresence>

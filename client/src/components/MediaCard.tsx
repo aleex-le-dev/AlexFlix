@@ -1,5 +1,5 @@
 import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { Check, ChevronDown, Play, Plus } from 'lucide-react';
+import { Check, Play, Plus } from 'lucide-react';
 import type { MediaItem } from '../types';
 import { imageUrl } from '../lib/api';
 import { isRecent, itemMeta, matchPercent } from '../lib/format';
@@ -114,14 +114,6 @@ export const MediaCard = memo(function MediaCard({ item, progress = 0, isFavorit
               className="grid h-8 w-8 place-items-center rounded-full border-2 border-white/60 bg-black/40 text-white transition hover:border-white"
             >
               {isFavorite ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              aria-label="Plus d'infos"
-              onClick={stop(() => onOpen(item))}
-              className="ml-auto grid h-8 w-8 place-items-center rounded-full border-2 border-white/60 bg-black/40 text-white transition hover:border-white"
-            >
-              <ChevronDown className="h-4 w-4" />
             </button>
           </div>
           <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>

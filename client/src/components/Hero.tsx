@@ -31,7 +31,7 @@ function HeroSlide({ item, active, onPlay, onInfo }: { item: MediaItem; active: 
       <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-linear-to-b from-black/60 to-transparent" />
 
       <div
-        className={`absolute bottom-[22%] left-4 right-4 max-w-2xl transition-all duration-700 md:bottom-[28%] md:left-12 ${
+        className={`absolute inset-x-4 bottom-[18%] top-24 flex max-w-xl flex-col justify-end transition-all duration-700 md:inset-x-12 md:bottom-[24%] md:top-32 lg:max-w-2xl ${
           active ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
         }`}
       >
@@ -39,10 +39,10 @@ function HeroSlide({ item, active, onPlay, onInfo }: { item: MediaItem; active: 
           <span className="font-display text-2xl leading-none tracking-normal text-ap-red">A</span>
           {item.type === 'tv' ? 'Série' : 'Film'}
         </p>
-        <h1 className="font-display text-5xl leading-[0.9] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] md:text-7xl lg:text-8xl">
+        <h1 className="line-clamp-2 font-display text-4xl leading-[0.95] text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.8)] md:text-6xl xl:text-7xl">
           {item.title}
         </h1>
-        <p className="mt-4 line-clamp-3 max-w-xl text-sm text-neutral-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:text-lg">
+        <p className="mt-4 line-clamp-3 max-w-xl text-sm text-neutral-100 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:text-base xl:text-lg">
           {item.overview || item.tagline}
         </p>
         <div className="mt-6 flex flex-wrap gap-3">

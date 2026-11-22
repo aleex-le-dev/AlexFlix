@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronDown, LoaderCircle, LogOut, RefreshCw, Search, Sparkles, Users, X } from 'lucide-react';
-import type { Facet, ScanStatus, Tab } from '../types';
+import { ChevronDown, LoaderCircle, LogOut, Pencil, RefreshCw, Search, Sparkles, X } from 'lucide-react';
+import type { Facet, Profile, ScanStatus, Tab } from '../types';
+import { ProfileAvatar } from './ProfileAvatar';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { FilterBar } from './FilterBar';
 import { Logo } from './Logo';
 
 interface Props {
+  profile: Profile;
+  profiles: Profile[];
+  onSwitchProfile: (profileId: string) => void;
+  onManageProfiles: () => void;
   categories: Facet[];
   category: string | null;
   onCategory: (category: string | null) => void;
@@ -26,7 +31,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'mylist', label: 'Ma liste' }
 ];
 
-export function Navbar({ categories, category, onCategory, tab, onTab, query, onQuery, scan, onScan, onLogout }: Props) {
+export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, categories, category, onCategory, tab, onTab, query, onQuery, scan, onScan, onLogout }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [searchOpen, setSearchOpen] = useState(query.length > 0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -74,7 +79,7 @@ export function Navbar({ categories, category, onCategory, tab, onTab, query, on
       }`}
     >
       <nav className="flex h-16 items-center gap-3 px-4 md:h-[68px] md:px-12">
-        <button type="button" onClick={() => onTab('home')} className="shrink-0" aria-label="Accueil Alex Prime">
+        <button type="button" onClick={() => onTab('home')} className="shrink-0" aria-label="Accueil AlexFlix">
           <Logo size="sm" />
         </button>
 
@@ -186,7 +191,7 @@ export function Navbar({ categories, category, onCategory, tab, onTab, query, on
               className="flex items-center gap-1.5"
               aria-label="Menu du profil"
             >
-              <img src="/avatar.jpg" alt="Profil Alex" className="h-8 w-8 rounded object-cover shadow-lg" draggable={false} />
+              <ProfileAvatar avatar={profile.avatar} className="h-8 w-8 rounded shadow-lg" />
               <ChevronDown className={`hidden h-4 w-4 transition-transform sm:block ${menuOpen ? 'rotate-180' : ''}`} />
             </button>
             <AnimatePresence>
@@ -198,6 +203,33 @@ export function Navbar({ categories, category, onCategory, tab, onTab, query, on
                   transition={{ duration: 0.18 }}
                   className="absolute right-0 top-full mt-3 w-64 rounded-md border border-white/10 bg-black/90 p-2 text-sm shadow-2xl backdrop-blur-xl"
                 >
+                  {profiles
+                    .filter((item) => item.id !== profile.id)
+                    .map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          onSwitchProfile(item.id);
+                        }}
+                        className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-white/10"
+                      >
+                        <ProfileAvatar avatar={item.avatar} className="h-7 w-7 rounded" />
+                        <span className="truncate">{item.name}</span>
+                      </button>
+                    ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onManageProfiles();
+                    }}
+                    className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-white/10"
+                  >
+                    <Pencil className="h-4 w-4" /> Gérer les profils
+                  </button>
+                  <div className="my-1 h-px bg-white/10" />
                   {__VITRINE__ ? null : (
                   <>
                   <p className="px-3 pb-2 pt-1 text-xs uppercase tracking-wider text-neutral-500">Bibliothèque Freebox</p>
@@ -237,18 +269,11 @@ export function Navbar({ categories, category, onCategory, tab, onTab, query, on
                     type="button"
                     onClick={() => {
                       setMenuOpen(false);
-                      window.dispatchEvent(new Event('alexprime:profiles'));
+                      onLogout();
                     }}
                     className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-white/10"
                   >
-                    <Users className="h-4 w-4" /> Changer de profil
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    className="flex w-full items-center gap-3 rounded px-3 py-2 text-left hover:bg-white/10"
-                  >
-                    <LogOut className="h-4 w-4" /> Se déconnecter d'Alex Prime
+                    <LogOut className="h-4 w-4" /> Se déconnecter
                   </button>
                 </motion.div>
               )}

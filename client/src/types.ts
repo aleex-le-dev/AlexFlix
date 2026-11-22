@@ -3,6 +3,15 @@ export type Tab = 'home' | 'movies' | 'tv' | 'mylist';
 export type ViewMode = 'rows' | 'grid';
 export type HeroMode = 'banner' | 'coverflow';
 
+export type AvatarId = 'bounty' | 'red' | 'blue' | 'yellow' | 'green' | 'purple' | 'pink';
+
+export interface Profile {
+  id: string;
+  name: string;
+  /** Avatar prédéfini, image importée (`custom:<hash>` en ligne) ou image locale (`data:` sur le serveur maison). */
+  avatar: AvatarId | string;
+}
+
 export interface EpisodeMeta {
   name: string;
   overview: string;
@@ -76,8 +85,16 @@ export interface ScanStatus {
   lastError: string | null;
 }
 
+export interface PersonAvatar {
+  image: string;
+  name: string;
+  character: string;
+  film: string;
+}
+
 export interface CatalogResponse {
   updatedAt: string;
+  people?: PersonAvatar[];
   baselineAt?: string | null;
   items: MediaItem[];
   genres: Facet[];

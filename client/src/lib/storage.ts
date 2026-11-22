@@ -15,19 +15,36 @@ export interface Prefs {
   muted: boolean;
 }
 
-const KEYS = {
-  favorites: 'alexprime:favorites',
-  progress: 'alexprime:progress',
-  prefs: 'alexprime:prefs'
-} as const;
+export interface SyncHandlers {
+  favorites: (profileId: string, favorites: string[]) => void;
+  progress: (profileId: string, entry: ProgressEntry) => void;
+}
 
 export const STORAGE_EVENT = 'alexprime:storage';
+const PREFS_KEY = 'alexprime:prefs';
+const LEGACY_FAVORITES = 'alexprime:favorites';
+const LEGACY_PROGRESS = 'alexprime:progress';
 const MAX_PROGRESS = 300;
 
-function read<T>(key: string, fallback: T): T {
+let activeProfile = 'alex';
+let sync: SyncHandlers | null = null;
+
+const favoritesKey = (profileId = activeProfile): string => `alexprime:favorites:${profileId}`;
+const progressKey = (profileId = activeProfile): string => `alexprime:progress:${profileId}`;
+
+function rawGet(key: string): string | null {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function read<T>(key: string, fallback: T): T {
+  const raw = rawGet(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
   } catch {
     return fallback;
   }
@@ -46,52 +63,107 @@ export function notifyStorage(): void {
   window.dispatchEvent(new Event(STORAGE_EVENT));
 }
 
-let favoritesCache: { raw: string | null; value: string[] } = { raw: null, value: [] };
-export function getFavorites(): string[] {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEYS.favorites);
-  } catch {
-    raw = null;
+export function setSyncHandlers(handlers: SyncHandlers): void {
+  sync = handlers;
+}
+
+/** Les anciennes données (avant les profils) sont rattachées au profil Alex. */
+function migrateLegacy(): void {
+  for (const [legacy, target] of [
+    [LEGACY_FAVORITES, favoritesKey('alex')],
+    [LEGACY_PROGRESS, progressKey('alex')]
+  ] as const) {
+    const raw = rawGet(legacy);
+    if (raw === null) continue;
+    try {
+      if (rawGet(target) === null) localStorage.setItem(target, raw);
+      localStorage.removeItem(legacy);
+    } catch {
+      continue;
+    }
   }
-  if (raw !== favoritesCache.raw) favoritesCache = { raw, value: read<string[]>(KEYS.favorites, []) };
+}
+migrateLegacy();
+
+export function setActiveProfile(profileId: string): void {
+  activeProfile = profileId;
+  notifyStorage();
+}
+
+export const getActiveProfile = (): string => activeProfile;
+
+let favoritesCache: { key: string; raw: string | null; value: string[] } = { key: '', raw: null, value: [] };
+export function getFavorites(): string[] {
+  const key = favoritesKey();
+  const raw = rawGet(key);
+  if (key !== favoritesCache.key || raw !== favoritesCache.raw) favoritesCache = { key, raw, value: read<string[]>(key, []) };
   return favoritesCache.value;
 }
 
 export function toggleFavorite(id: string): void {
   const list = getFavorites();
-  write(KEYS.favorites, list.includes(id) ? list.filter((value) => value !== id) : [id, ...list]);
+  const next = list.includes(id) ? list.filter((value) => value !== id) : [id, ...list];
+  write(favoritesKey(), next);
+  sync?.favorites(activeProfile, next);
 }
 
-let progressCache: { raw: string | null; value: Record<string, ProgressEntry> } = { raw: null, value: {} };
+let progressCache: { key: string; raw: string | null; value: Record<string, ProgressEntry> } = { key: '', raw: null, value: {} };
 export function getProgressMap(): Record<string, ProgressEntry> {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEYS.progress);
-  } catch {
-    raw = null;
-  }
-  if (raw !== progressCache.raw) progressCache = { raw, value: read<Record<string, ProgressEntry>>(KEYS.progress, {}) };
+  const key = progressKey();
+  const raw = rawGet(key);
+  if (key !== progressCache.key || raw !== progressCache.raw) progressCache = { key, raw, value: read<Record<string, ProgressEntry>>(key, {}) };
   return progressCache.value;
 }
 
-export function saveProgress(entry: ProgressEntry, notify = true): void {
-  const map = { ...getProgressMap(), [entry.fileId]: entry };
+function trimProgress(map: Record<string, ProgressEntry>): Record<string, ProgressEntry> {
   const entries = Object.values(map);
-  if (entries.length > MAX_PROGRESS) {
-    entries.sort((a, b) => b.updatedAt - a.updatedAt);
-    const kept: Record<string, ProgressEntry> = {};
-    for (const item of entries.slice(0, MAX_PROGRESS)) kept[item.fileId] = item;
-    write(KEYS.progress, kept, notify);
+  if (entries.length <= MAX_PROGRESS) return map;
+  entries.sort((a, b) => b.updatedAt - a.updatedAt);
+  const kept: Record<string, ProgressEntry> = {};
+  for (const item of entries.slice(0, MAX_PROGRESS)) kept[item.fileId] = item;
+  return kept;
+}
+
+export function saveProgress(entry: ProgressEntry, notify = true): void {
+  write(progressKey(), trimProgress({ ...getProgressMap(), [entry.fileId]: entry }), notify);
+  sync?.progress(activeProfile, entry);
+}
+
+/** Remplace les données locales d'un profil par celles du serveur (progression fusionnée, la plus récente gagne). */
+export function hydrateProfile(profileId: string, favorites: string[] | undefined, progress: Record<string, ProgressEntry> | undefined): void {
+  if (favorites) write(favoritesKey(profileId), favorites, false);
+  if (progress) {
+    const local = read<Record<string, ProgressEntry>>(progressKey(profileId), {});
+    const merged: Record<string, ProgressEntry> = { ...local };
+    for (const entry of Object.values(progress)) {
+      const current = merged[entry.fileId];
+      if (!current || current.updatedAt <= entry.updatedAt) merged[entry.fileId] = entry;
+    }
+    write(progressKey(profileId), trimProgress(merged), false);
+  }
+  notifyStorage();
+}
+
+export function readProfileData(profileId: string): { favorites: string[]; progress: Record<string, ProgressEntry> } {
+  return {
+    favorites: read<string[]>(favoritesKey(profileId), []),
+    progress: read<Record<string, ProgressEntry>>(progressKey(profileId), {})
+  };
+}
+
+export function clearProfileData(profileId: string): void {
+  try {
+    localStorage.removeItem(favoritesKey(profileId));
+    localStorage.removeItem(progressKey(profileId));
+  } catch {
     return;
   }
-  write(KEYS.progress, map, notify);
 }
 
 export function getPrefs(): Prefs {
-  return { heroMode: 'banner', view: 'rows', volume: 1, muted: false, ...read<Partial<Prefs>>(KEYS.prefs, {}) };
+  return { heroMode: 'banner', view: 'rows', volume: 1, muted: false, ...read<Partial<Prefs>>(PREFS_KEY, {}) };
 }
 
 export function setPrefs(patch: Partial<Prefs>, notify = false): void {
-  write(KEYS.prefs, { ...getPrefs(), ...patch }, notify);
+  write(PREFS_KEY, { ...getPrefs(), ...patch }, notify);
 }

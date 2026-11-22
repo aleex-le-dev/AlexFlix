@@ -1,5 +1,5 @@
 <#
-  Alex Prime - deploiement en un clic vers l'hebergeur (FTP integre, sans FileZilla)
+  AlexFlix - deploiement en un clic vers l'hebergeur (FTP integre, sans FileZilla)
 
   .\deploy.ps1             scan du disque Freebox + liens de telechargement + envoi FTP
   .\deploy.ps1 -SansScan   liens de telechargement + envoi FTP (catalogue actuel)
@@ -30,7 +30,7 @@ function Get-EnvValue([string]$Name) {
 }
 
 try {
-  Write-Host "ALEX PRIME - deploiement" -ForegroundColor Red
+  Write-Host "ALEXFLIX - deploiement" -ForegroundColor Red
 
   if (-not (Get-Command node -ErrorAction SilentlyContinue)) { throw 'Node.js introuvable : installez-le depuis https://nodejs.org' }
   if (-not (Test-Path -LiteralPath '.env')) { throw 'Fichier .env manquant : copiez .env.example en .env puis completez-le.' }
@@ -47,7 +47,7 @@ try {
       Write-Host "Scan via le disque monte : $media"
     } else {
       Write-Host "Disque non monte : scan via l'API Freebox OS ($(Get-EnvValue 'FREEBOX_MEDIA_ROOT'))"
-      Write-Host "Au premier lancement, validez 'Alex Prime' sur l'ecran de la Freebox." -ForegroundColor Yellow
+      Write-Host "Au premier lancement, validez 'AlexFlix' sur l'ecran de la Freebox." -ForegroundColor Yellow
     }
   }
 

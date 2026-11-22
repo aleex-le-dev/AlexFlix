@@ -17,7 +17,7 @@ import { streamRoutes } from './routes/stream.js';
 
 const configErrors = validateConfig('server');
 if (configErrors.length > 0) {
-  console.error(`[Alex Prime] Configuration invalide (.env) :\n - ${configErrors.join('\n - ')}`);
+  console.error(`[AlexFlix] Configuration invalide (.env) :\n - ${configErrors.join('\n - ')}`);
   process.exit(1);
 }
 
@@ -60,7 +60,7 @@ app.addHook('onSend', async (_request, reply, payload) => {
 });
 
 app.get('/api/health', async () => ({
-  name: 'Alex Prime',
+  name: 'AlexFlix',
   status: 'ok',
   mediaReachable: fs.existsSync(config.mediaPath),
   tmdb: tmdbEnabled(),
@@ -88,7 +88,7 @@ if (fs.existsSync(path.join(config.clientDist, 'index.html'))) {
 } else {
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith('/api/')) return reply.code(404).send({ error: 'Route inconnue.' });
-    return reply.code(404).type('text/plain; charset=utf-8').send('Alex Prime : interface non compilée (npm run build) ou utilisez Vite en dev.');
+    return reply.code(404).type('text/plain; charset=utf-8').send('AlexFlix : interface non compilée (npm run build) ou utilisez Vite en dev.');
   });
 }
 
@@ -96,7 +96,7 @@ await detectFfmpeg();
 await app.listen({ port: config.port, host: config.host });
 
 app.log.info(
-  `Alex Prime prêt sur http://localhost:${config.port} · médias : ${config.mediaPath} · TMDB : ${
+  `AlexFlix prêt sur http://localhost:${config.port} · médias : ${config.mediaPath} · TMDB : ${
     tmdbEnabled() ? 'actif' : 'désactivé'
   } · FFmpeg : ${transcodeAvailable() ? 'actif' : 'inactif'}`
 );
@@ -109,7 +109,7 @@ if (config.scanIntervalMinutes > 0) {
 }
 
 const shutdown = async (signal: string): Promise<void> => {
-  app.log.info(`${signal} reçu, arrêt d'Alex Prime…`);
+  app.log.info(`${signal} reçu, arrêt d'AlexFlix…`);
   await app.close();
   process.exit(0);
 };

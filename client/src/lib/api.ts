@@ -44,7 +44,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-const unavailable = <T>(): Promise<T> => Promise.reject(new ApiError(400, 'Fonction disponible uniquement sur le serveur Alex Prime de la maison.'));
+const unavailable = <T>(): Promise<T> => Promise.reject(new ApiError(400, 'Fonction disponible uniquement sur le serveur AlexFlix de la maison.'));
 
 async function loadCatalog(): Promise<CatalogResponse> {
   const data = await request<CatalogResponse>(VITRINE ? '/catalog.json' : '/api/catalog', VITRINE ? { cache: 'no-cache' } : {});

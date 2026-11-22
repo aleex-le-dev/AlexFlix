@@ -5,7 +5,7 @@ import { tmdbEnabled } from './lib/tmdb.js';
 
 const errors = validateConfig('scan');
 if (errors.length > 0) {
-  console.error(`[Alex Prime] Configuration invalide :\n - ${errors.join('\n - ')}`);
+  console.error(`[AlexFlix] Configuration invalide :\n - ${errors.join('\n - ')}`);
   process.exit(1);
 }
 
@@ -14,7 +14,7 @@ const store = new CatalogStore(config.dataDir);
 await store.load();
 const scanner = new Scanner(store);
 
-console.log(`Alex Prime — scan ${full ? 'complet' : 'delta'} de ${config.mediaPath} (TMDB ${tmdbEnabled() ? 'actif' : 'désactivé'})`);
+console.log(`AlexFlix — scan ${full ? 'complet' : 'delta'} de ${config.mediaPath} (TMDB ${tmdbEnabled() ? 'actif' : 'désactivé'})`);
 
 const timer = setInterval(() => {
   const status = scanner.getStatus();

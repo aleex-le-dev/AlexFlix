@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🟥 ALEX PRIME
+# 🟥 ALEXFLIX
 
 **Ta vidéothèque Freebox, avec l'expérience Netflix.**
 

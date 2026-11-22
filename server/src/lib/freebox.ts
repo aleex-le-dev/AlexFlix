@@ -42,7 +42,7 @@ export interface ShareLink {
 
 const APP = {
   app_id: config.freeboxAppId,
-  app_name: 'Alex Prime',
+  app_name: 'AlexFlix',
   app_version: '1.0.0',
   device_name: os.hostname()
 };
@@ -92,7 +92,7 @@ export class FreeboxClient {
       this.log('Aucune autorisation Freebox enregistrée, demande en cours…');
     }
     const request = await this.request<{ app_token: string; track_id: number }>('POST', '/login/authorize/', APP);
-    this.log('➡  Validez « Alex Prime » sur l’écran de la Freebox (flèche droite / bouton OK du Server).');
+    this.log('➡  Validez « AlexFlix » sur l’écran de la Freebox (flèche droite / bouton OK du Server).');
     const deadline = Date.now() + 120000;
     while (Date.now() < deadline) {
       await sleep(2000);
@@ -121,7 +121,7 @@ export class FreeboxClient {
       this.session = session.session_token;
       if (!session.permissions.explorer) {
         throw new Error(
-          'Permission manquante : Freebox OS → Paramètres → Gestion des accès → Applications → Alex Prime → cocher « Accès au gestionnaire de fichiers ».'
+          'Permission manquante : Freebox OS → Paramètres → Gestion des accès → Applications → AlexFlix → cocher « Accès au gestionnaire de fichiers ».'
         );
       }
     } catch (error) {

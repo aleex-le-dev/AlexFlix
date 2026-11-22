@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { transcodeAvailable } from '../lib/ffmpeg.js';
+import { readPeople } from '../lib/people.js';
 import type { Scanner } from '../lib/scanner.js';
 import type { CatalogStore } from '../lib/store.js';
 import { tmdbEnabled } from '../lib/tmdb.js';
@@ -16,6 +17,7 @@ export function catalogRoutes(app: FastifyInstance, { store, scanner }: Deps): v
     return {
       updatedAt: store.data.updatedAt,
       baselineAt: store.baselineAt(),
+      people: await readPeople(),
       items: store.list(),
       genres,
       keywords,

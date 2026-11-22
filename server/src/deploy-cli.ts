@@ -6,6 +6,7 @@ import { config, PROJECT_ROOT, validateConfig } from './config.js';
 import { FreeboxClient } from './lib/freebox.js';
 import { imagesDir } from './lib/images.js';
 import { idleStatus, Scanner } from './lib/scanner.js';
+import { ensurePeople } from './lib/people.js';
 import { CatalogStore } from './lib/store.js';
 import { errorMessage } from './lib/utils.js';
 import { configPhp, gatePhp, htaccess, resolveHomeIps, vitrineSecrets } from './lib/vitrine.js';
@@ -31,7 +32,7 @@ if (!existsSync(path.join(distDir, 'index.html'))) {
   errors.push('client/dist-vitrine absent : lancez « npm run deploy » depuis la racine (il compile la vitrine).');
 }
 if (errors.length > 0) {
-  console.error(`[Alex Prime] Configuration invalide :\n - ${errors.join('\n - ')}`);
+  console.error(`[AlexFlix] Configuration invalide :\n - ${errors.join('\n - ')}`);
   process.exit(1);
 }
 
@@ -141,9 +142,16 @@ for (const item of items) {
   }
 }
 
+const people = await ensurePeople(
+  Object.values(store.data.items).filter((item) => item.fileIds.length > 0),
+  log
+);
+for (const person of people) imageNames.add(person.image);
+
 const catalog = {
   updatedAt: new Date().toISOString(),
   baselineAt: store.baselineAt(),
+  people,
   items,
   genres,
   keywords,
