@@ -130,6 +130,7 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
                   onRemove={onRemove}
                   expandable
                   wide={wide}
+                  trailerPreview={row.id.startsWith('collection-')}
                 />
               </div>
             );

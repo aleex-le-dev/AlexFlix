@@ -21,6 +21,8 @@ interface Props {
    */
   expandable?: boolean;
   wide?: boolean;
+  /** Rangées de saga : au survol, la bande-annonce YouTube remplace le fond flouté de la page. */
+  trailerPreview?: boolean;
 }
 
 export const MediaCard = memo(function MediaCard({
@@ -32,7 +34,8 @@ export const MediaCard = memo(function MediaCard({
   onToggleFavorite,
   onRemove,
   expandable = false,
-  wide = false
+  wide = false,
+  trailerPreview = false
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [broken, setBroken] = useState(false);
@@ -55,7 +58,7 @@ export const MediaCard = memo(function MediaCard({
 
   const onEnter = (): void => {
     if (!expandable) ref.current?.style.setProperty('--s', '1.1');
-    if (poster && !broken) showAmbient(poster);
+    if (poster && !broken) showAmbient(poster, trailerPreview ? item.trailer : null);
   };
 
   const onLeave = (): void => {
