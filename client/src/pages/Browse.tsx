@@ -177,7 +177,10 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   const selected = selectedId ? (byId.get(selectedId) ?? null) : null;
   const playingItem = playing ? (byId.get(playing.itemId) ?? null) : null;
 
-  const gridTitle = searching ? `Résultats pour « ${deferredQuery.trim()} »` : (genre ?? TAB_TITLES[tab]);
+  const myListCount = favorites.filter((id) => byId.has(id)).length;
+  const gridTitle = searching
+    ? `Résultats pour « ${deferredQuery.trim()} »`
+    : (genre ?? (tab === 'mylist' ? `${TAB_TITLES.mylist} (${myListCount})` : TAB_TITLES[tab]));
 
   const renderContent = () => {
     if (loading && !data) return <BrowseSkeleton />;
@@ -251,7 +254,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
           )}
           {showGrid ? (
             <Grid
-              title={searchMode ? '' : gridTitle}
+              title={searchMode || (tab === 'mylist' && !genre) ? '' : gridTitle}
               items={
                 searchMode && !searching
                   ? []
@@ -297,7 +300,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-ap-bg pb-24">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-ap-bg pb-24 md:pb-0">
       <AmbientBackdrop />
       <Navbar
         categorySections={categorySections}
@@ -319,12 +322,13 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
         onSwitchProfile={onSwitchProfile}
         onManageProfiles={onManageProfiles}
         onOpenSettings={() => setSettingsOpen(true)}
+        myListCount={myListCount}
         onLogout={onLogout}
       />
 
       {renderContent()}
 
-      <footer className="relative z-[1] mt-16 px-4 text-xs text-neutral-600 md:px-12">
+      <footer className="relative z-[1] mt-auto px-4 pb-6 pt-16 text-center text-xs text-neutral-600 md:px-12">
         <p>AlexFlix · Bibliothèque personnelle Freebox</p>
       </footer>
 

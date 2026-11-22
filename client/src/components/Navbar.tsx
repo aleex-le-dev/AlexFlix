@@ -14,6 +14,8 @@ interface Props {
   onSwitchProfile: (profileId: string) => void;
   onManageProfiles: () => void;
   onOpenSettings: () => void;
+  /** Nombre de titres dans Ma liste, affiché « Ma liste (3) ». */
+  myListCount: number;
   categorySections: CategorySection[];
   category: string | null;
   onCategory: (tab: Tab, category: string) => void;
@@ -33,7 +35,7 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: 'mylist', label: 'Ma liste' }
 ];
 
-export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, onOpenSettings, categorySections, category, onCategory, tab, onTab, onOpenSearch, searchHidden, scan, onScan, onLogout }: Props) {
+export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, onOpenSettings, myListCount, categorySections, category, onCategory, tab, onTab, onOpenSearch, searchHidden, scan, onScan, onLogout }: Props) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -81,9 +83,9 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, o
                 onClick={() => onTab(item.id)}
                 className={`transition-colors hover:text-neutral-300 ${tab === item.id ? 'font-semibold text-white' : 'text-neutral-300/90'}`}
               >
-                {item.label}
+                {item.id === 'mylist' && myListCount > 0 ? `${item.label} (${myListCount})` : item.label}
               </button>
-              {item.id === 'tv' && tab !== 'mylist' && (
+              {item.id === 'tv' && (
                 <FilterBar sections={categorySections} value={category} activeTab={tab} onChange={onCategory} />
               )}
             </li>
@@ -215,7 +217,7 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, o
         </div>
       </nav>
     </header>
-    <MobileNav tab={tab} onTab={onTab} sections={categorySections} category={category} onCategory={onCategory} />
+    <MobileNav tab={tab} onTab={onTab} sections={categorySections} category={category} onCategory={onCategory} myListCount={myListCount} />
     </>
   );
 }

@@ -24,7 +24,7 @@ function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: 
     </a>
   );
 }
-import { itemProgress, progressRatio, resumeFileId } from '../lib/catalog';
+import { groupSagas, itemProgress, progressRatio, resumeFileId } from '../lib/catalog';
 import { capitalize, episodeLabel, formatRating, formatSize, itemMeta } from '../lib/format';
 import type { ProgressEntry } from '../lib/storage';
 
@@ -93,23 +93,94 @@ export function DetailModal({
     };
   }, [onClose]);
 
-  const similar = useMemo(
-    () =>
-      all
-        .filter((other) => other.id !== item.id && other.genres.some((genre) => item.genres.includes(genre)))
-        .map((other) => ({
-          other,
-          score:
-            other.genres.filter((genre) => item.genres.includes(genre)).length * 2 +
-            other.keywords.filter((keyword) => item.keywords.includes(keyword)).length * 3 +
-            (other.type === item.type ? 1 : 0) +
-            other.rating / 10
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 9)
-        .map((entry) => entry.other),
-    [all, item]
-  );
+  /** Même saga (même sous-dossier du disque), dans l'ordre des épisodes. */
+  const saga = useMemo(() => {
+    const key = item.collections?.[0];
+    if (!key) return [];
+    return groupSagas(all.filter((other) => other.id !== item.id && other.collections?.[0] === key));
+  }, [all, item]);
+
+  /**
+   * Titres similaires, du plus proche au plus éloigné : mots-clés et genres TMDB communs, même catégorie,
+   * même type, note. Les films d'une même saga sont regroupés et remis dans l'ordre.
+   */
+  const similar = useMemo(() => {
+    const exclude = new Set([item.id, ...saga.map((other) => other.id)]);
+    const ranked = all
+      .filter((other) => !exclude.has(other.id) && other.genres.some((genre) => item.genres.includes(genre)))
+      .map((other) => ({
+        other,
+        score:
+          other.keywords.filter((keyword) => item.keywords.includes(keyword)).length * 3 +
+          other.genres.filter((genre) => item.genres.includes(genre)).length * 2 +
+          (other.categories.some((category) => item.categories.includes(category)) ? 2 : 0) +
+          (other.type === item.type ? 1 : 0) +
+          other.rating / 10
+      }))
+      .sort((a, b) => b.score - a.score || b.other.rating - a.other.rating)
+      .slice(0, 30)
+      .map((entry) => entry.other);
+    return groupSagas(ranked);
+  }, [all, item, saga]);
+
+  /**
+   * Cartes du bas de fiche. Dans « Titres similaires », les films d'un même dossier sont réunis
+   * en une carte empilée : une saga (sous-dossier) ouvre son 1er film, un dossier de catégorie ouvre la catégorie.
+   */
+  type SimilarCard = {
+    key: string;
+    open: () => void;
+    title: string;
+    badge: string;
+    label: string;
+    text: string;
+    art: string | null;
+    stacked: boolean;
+  };
+  const toCard = (other: MediaItem): SimilarCard => ({
+    key: other.id,
+    open: () => onSelect(other),
+    title: other.title,
+    badge: other.year ? String(other.year) : '',
+    label: '',
+    text: other.overview,
+    art: imageUrl(other.backdrop) ?? imageUrl(other.poster),
+    stacked: false
+  });
+  const similarCards = useMemo<SimilarCard[]>(() => {
+    const folderOf = (other: MediaItem): string => (other.collections?.[0] ? `saga:${other.collections[0]}` : `dossier:${other.categories[0] ?? ''}`);
+    const cards: SimilarCard[] = [];
+    const seen = new Set<string>();
+    for (const other of similar) {
+      const folder = folderOf(other);
+      if (seen.has(folder)) continue;
+      seen.add(folder);
+      const isSaga = folder.startsWith('saga:');
+      const name = folder.slice(folder.indexOf(':') + 1);
+      // Saga : tous ses films ; dossier de catégorie : seulement ceux retenus comme similaires.
+      const members = groupSagas(
+        isSaga
+          ? all.filter((candidate) => candidate.id !== item.id && candidate.collections?.[0] === name)
+          : similar.filter((candidate) => folderOf(candidate) === folder)
+      );
+      if (members.length < 2 || !name) {
+        for (const member of members.length ? members : [other]) cards.push(toCard(member));
+        continue;
+      }
+      const unit = members.every((member) => member.type === 'tv') ? 'séries' : 'films';
+      cards.push({
+        key: folder,
+        open: isSaga ? () => onSelect(members[0]) : () => onFilterGenre(name),
+        title: isSaga ? (name.split(' · ').pop() ?? name) : name,
+        badge: `${members.length} ${unit}`,
+        label: isSaga ? 'Saga' : 'Dossier',
+        text: members.map((member) => member.title).join(' · '),
+        art: imageUrl(members[0].backdrop) ?? imageUrl(members[0].poster),
+        stacked: true
+      });
+    }
+    return cards.slice(0, 9);
+  }, [similar, all, item.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const episodes = item.files.filter((file) => (file.season ?? 0) === season);
   const backdrop = imageUrl(item.backdrop) ?? imageUrl(item.poster);
@@ -409,35 +480,53 @@ export function DetailModal({
           </section>
         )}
 
-        {similar.length > 0 && (
-          <section className="px-6 pb-8 md:px-12">
-            <h3 className="mb-4 text-xl font-semibold text-white md:text-2xl">Titres similaires</h3>
+        {[
+          { id: 'saga', title: item.collections?.[0] ? `De la même saga · ${item.collections[0]}` : '', list: saga.map(toCard) },
+          { id: 'similar', title: 'Titres similaires', list: similarCards }
+        ]
+          .filter((block) => block.list.length > 0)
+          .map((block) => (
+          <section key={block.id} className="px-6 pb-8 md:px-12">
+            <h3 className="mb-4 text-xl font-semibold text-white md:text-2xl">{block.title}</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {similar.map((other) => {
-                const art = imageUrl(other.backdrop) ?? imageUrl(other.poster);
-                return (
-                  <button
-                    type="button"
-                    key={other.id}
-                    onClick={() => onSelect(other)}
-                    className="group/sim overflow-hidden rounded-md bg-[#2f2f2f] text-left transition hover:bg-[#3a3a3a]"
-                  >
-                    <div className="relative aspect-video overflow-hidden bg-neutral-800">
-                      {art && (
-                        <img src={art} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover/sim:scale-105" />
+              {block.list.map((card) => (
+                <button
+                  type="button"
+                  key={card.key}
+                  onClick={card.open}
+                  title={card.stacked ? `${card.label} ${card.title}` : card.title}
+                  className={`group/sim relative text-left ${card.stacked ? 'mt-2' : ''}`}
+                >
+                  {card.stacked && (
+                    <>
+                      <span aria-hidden="true" className="absolute inset-x-4 -top-2 h-4 rounded-t-md bg-[#2a2a2a] ring-1 ring-white/5" />
+                      <span aria-hidden="true" className="absolute inset-x-2 -top-1 h-4 rounded-t-md bg-[#353535] ring-1 ring-white/5" />
+                    </>
+                  )}
+                  <span className="relative block overflow-hidden rounded-md bg-[#2f2f2f] transition group-hover/sim:bg-[#3a3a3a]">
+                    <span className="relative block aspect-video overflow-hidden bg-neutral-800">
+                      {card.art && (
+                        <img src={card.art} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover/sim:scale-105" />
                       )}
-                      <span className="absolute right-2 top-2 rounded bg-black/70 px-1.5 text-xs text-white">{other.year}</span>
-                    </div>
-                    <div className="p-3">
-                      <p className="line-clamp-1 text-sm font-semibold text-white">{other.title}</p>
-                      <p className="mt-1 line-clamp-3 text-xs text-neutral-400">{other.overview}</p>
-                    </div>
-                  </button>
-                );
-              })}
+                      {card.badge && (
+                        <span className={`absolute right-2 top-2 rounded px-1.5 text-xs font-semibold text-white ${card.stacked ? 'bg-ap-red' : 'bg-black/70'}`}>
+                          {card.badge}
+                        </span>
+                      )}
+                      {card.stacked && (
+                        <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 text-[10px] font-bold uppercase tracking-wider text-white">{card.label}</span>
+                      )}
+                    </span>
+                    <span className="block p-3">
+                      <span className="line-clamp-1 text-sm font-semibold text-white">{card.title}</span>
+                      <span className={`mt-1 line-clamp-3 text-xs ${card.stacked ? 'text-neutral-300' : 'text-neutral-400'}`}>{card.text}</span>
+                    </span>
+                  </span>
+                </button>
+              ))}
             </div>
           </section>
-        )}
+          ))}
 
         {!__VITRINE__ && (
         <details className="border-t border-white/10 px-6 py-5 text-sm text-neutral-400 md:px-12">

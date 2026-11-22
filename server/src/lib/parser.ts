@@ -5,7 +5,7 @@ import { normalizeKey } from './utils.js';
 const STRONG_TOKENS = new Set([
   '2160p', '1440p', '1080p', '1080i', '720p', '576p', '480p', '360p', '4k', '8k', 'uhd',
   'hdr', 'hdr10', 'hdr10+', 'dv', 'dovi', 'sdr',
-  'bluray', 'blu-ray', 'bdrip', 'brrip', 'bdremux', 'remux', 'webdl', 'web-dl', 'webrip', 'web', 'hdtv', 'hdrip',
+  'bluray', 'blu-ray', 'bdrip', 'brrip', 'bdremux', 'remux', 'webdl', 'web-dl', 'webrip', 'hdtv', 'hdrip',
   'dvdrip', 'dvd', 'dvdscr', 'dvd5', 'dvd9', 'hdcam', 'tvrip', 'pdtv',
   'x264', 'x265', 'h264', 'h265', 'hevc', 'avc', 'av1', 'xvid', 'divx', 'vc1', '10bit', '10-bit', '8bit',
   'aac', 'aac2', 'ac3', 'eac3', 'dd', 'ddp', 'dd5', 'ddp5', 'dd2', 'dts', 'dts-hd', 'dtshd', 'truehd', 'atmos', 'flac', 'mp3', 'opus',
@@ -77,6 +77,8 @@ export function cleanTitle(raw: string): { title: string; year: number | null } 
     titleTokens.pop();
   }
 
+  // « Gladiator 1 2000 », « Venom 1 (2018) » : le « 1 » final (premier volet) fausse la recherche TMDB.
+  if (titleTokens.length > 1 && titleTokens[titleTokens.length - 1] === '1') titleTokens.pop();
   const title = titleTokens.join(' ').trim() || tokens.join(' ').trim();
   return { title, year: yearIndex >= 0 ? Number(tokens[yearIndex]) : null };
 }

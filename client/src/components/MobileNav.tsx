@@ -11,6 +11,7 @@ interface Props {
   sections: CategorySection[];
   category: string | null;
   onCategory: (tab: Tab, category: string) => void;
+  myListCount: number;
 }
 
 type Item = { id: Tab | 'categories'; label: string; icon: typeof Clapperboard };
@@ -23,7 +24,7 @@ const ITEMS: Item[] = [
 ];
 
 /** Mobile : barre d'onglets en bas (au pouce) + panneau Catégories qui monte du bas. */
-export function MobileNav({ tab, onTab, sections, category, onCategory }: Props) {
+export function MobileNav({ tab, onTab, sections, category, onCategory, myListCount }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const visible = sections.filter((section) => section.categories.length > 0);
 
@@ -44,7 +45,12 @@ export function MobileNav({ tab, onTab, sections, category, onCategory }: Props)
           {ITEMS.map((item) => {
             const active = activeId === item.id;
             const Icon = item.icon;
-            const label = item.id === 'categories' && category ? category : item.label;
+            const label =
+              item.id === 'categories' && category
+                ? category
+                : item.id === 'mylist' && myListCount > 0
+                  ? `${item.label} (${myListCount})`
+                  : item.label;
             return (
               <li key={item.id}>
                 <button
