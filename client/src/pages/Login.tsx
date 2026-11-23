@@ -81,7 +81,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
           {loading ? 'Connexion…' : 'Se connecter'}
         </button>
 
-        <p className="mt-8 text-xs leading-relaxed text-neutral-500">
+        <p className="mt-8 text-xs leading-relaxed text-neutral-400">
           Accès privé AlexFlix. Session chiffrée par jeton JWT dans un cookie HttpOnly. Utilisez le VPN Freebox ou un accès HTTPS hors de chez vous.
         </p>
       </motion.form>

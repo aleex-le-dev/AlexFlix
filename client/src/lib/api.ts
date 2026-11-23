@@ -93,6 +93,20 @@ export const api = {
         })
 };
 
+/**
+ * Image optimisée (vitrine : WebP généré au deploy dans /img/) :
+ * sm = affiche de rangée 342 px · md = taille normale · hd = fond 1920 px (bannière, fiche).
+ * Serveur local : JPEG d'origine.
+ */
+export type ArtSize = 'sm' | 'md' | 'hd';
+export const artUrl = (name: string | null | undefined, size: ArtSize = 'md'): string | null => {
+  if (!name) return null;
+  if (!VITRINE) return imageUrl(name);
+  const base = name.replace(/\.jpg$/i, '');
+  const suffix = size === 'sm' && base.endsWith('-poster') ? '.sm' : size === 'hd' && base.endsWith('-backdrop') ? '.hd' : '';
+  return `/img/${encodeURIComponent(`${base}${suffix}`)}.webp`;
+};
+
 export const imageUrl = (name: string | null | undefined): string | null => {
   if (!name) return null;
   return VITRINE ? `/images/${encodeURIComponent(name)}` : `/api/images/${encodeURIComponent(name)}`;

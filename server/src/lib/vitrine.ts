@@ -106,6 +106,8 @@ $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+if ($https) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 header('X-Robots-Tag: noindex, nofollow');
 
 function ap_sign(int $exp, string $secret): string
@@ -259,6 +261,7 @@ function ap_login_page(array $cfg, ?string $error, int $status): void
     $tiles .= '<button class="profile" type="button" data-id="' . $id . '"' . $focus . '><span class="avatar">' . ap_avatar((string)$profile['avatar'])
       . '</span><span class="name">' . $name . '</span><svg class="padlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-label="Profil verrouillé"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>';
   }
+  $host = htmlspecialchars((string)($_SERVER['HTTP_HOST'] ?? ''), ENT_QUOTES, 'UTF-8');
   echo <<<HTML
 <!doctype html>
 <html lang="fr">
@@ -267,6 +270,15 @@ function ap_login_page(array $cfg, ?string $error, int $status): void
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#141414">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="AlexFlix">
+<meta property="og:title" content="AlexFlix">
+<meta property="og:description" content="Films et séries de la maison — vidéothèque privée">
+<meta property="og:image" content="https://{$host}/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>AlexFlix</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23141414'/%3E%3Cpath d='M18 54 L29 10 H35 L46 54 H38.5 L36.3 44 H27.7 L25.5 54 Z M29.2 37 H34.8 L32 23.5 Z' fill='%23e50914'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -418,7 +430,7 @@ if ($path === '/__login') {
   ap_login_page($cfg, 'Code PIN incorrect. Veuillez réessayer.', 401);
 }
 
-$public = ['/avatar.jpg', '/favicon.svg'];
+$public = ['/avatar.jpg', '/favicon.svg', '/robots.txt', '/og.png', '/apple-touch-icon.png', '/icon-512.png', '/manifest.webmanifest'];
 $isPublic = in_array($path, $public, true) || preg_match('#^/avatars/[a-f0-9]{16}\.jpg$#', $path) === 1;
 if (!$isPublic && preg_match('#^/images/([a-z0-9-]+\.jpg)$#', $path, $match) === 1) {
   $isPublic = in_array('film:' . $match[1], array_column(ap_state_read()['profiles'], 'avatar'), true);
@@ -624,6 +636,7 @@ $types = [
   'jpg' => 'image/jpeg',
   'jpeg' => 'image/jpeg',
   'png' => 'image/png',
+  'txt' => 'text/plain; charset=utf-8',
   'webp' => 'image/webp',
   'ico' => 'image/x-icon',
   'woff2' => 'font/woff2',

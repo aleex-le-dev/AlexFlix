@@ -31,9 +31,9 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
   const enterTimer = useRef(0);
   const leaveTimer = useRef(0);
   const [hoverable] = useState(canHover);
-  // Une carte est toujours élargie : la première au départ, puis la dernière survolée.
-  const [wideId, setWideId] = useState<string | null>(row.items[0]?.id ?? null);
-  const shownWide = wideId && row.items.some((item) => item.id === wideId) ? wideId : (row.items[0]?.id ?? null);
+  // Seule la carte survolée est élargie ; elle se replie dès que la souris quitte la rangée.
+  const [wideId, setWideId] = useState<string | null>(null);
+  const shownWide = wideId && row.items.some((item) => item.id === wideId) ? wideId : null;
   const [edges, setEdges] = useState({ start: true, end: false });
 
   const updateEdges = useCallback(() => {
@@ -68,7 +68,7 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
     if (!track) return;
     track.scrollBy({ left: direction * track.clientWidth * 0.85, behavior: 'smooth' });
     window.clearTimeout(enterTimer.current);
-    enterTimer.current = window.setTimeout(widenFirstVisible, 650);
+    if (wideId) enterTimer.current = window.setTimeout(widenFirstVisible, 650);
   };
 
   /** Petit délai : passer la souris en travers de la rangée n'élargit pas chaque carte. */
@@ -79,9 +79,11 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
     enterTimer.current = window.setTimeout(() => setWideId(id), 140);
   };
 
-  /** En quittant la rangée, la carte élargie reste celle-ci (comme Netflix). */
+  /** En quittant la rangée, la carte se replie (petit délai : pas de clignotement en frôlant le bord). */
   const leaveTrack = (): void => {
     window.clearTimeout(enterTimer.current);
+    window.clearTimeout(leaveTimer.current);
+    leaveTimer.current = window.setTimeout(() => setWideId(null), 120);
   };
 
   return (
@@ -130,7 +132,6 @@ export const Row = memo(function Row({ row, progress, favorites, onOpen, onPlay,
                   onRemove={onRemove}
                   expandable
                   wide={wide}
-                  trailerPreview={row.id.startsWith('collection-')}
                 />
               </div>
             );

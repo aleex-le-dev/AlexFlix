@@ -78,7 +78,7 @@ if (fs.existsSync(path.join(config.clientDist, 'index.html'))) {
     prefix: '/',
     maxAge: '7d',
     setHeaders: (res, filePath) => {
-      if (filePath.endsWith('index.html') || filePath.endsWith('.webmanifest')) res.setHeader('Cache-Control', 'no-cache');
+      if (filePath.endsWith('index.html') || filePath.endsWith('.webmanifest')) res.header('Cache-Control', 'no-cache');
     }
   });
   app.setNotFoundHandler((request, reply) => {

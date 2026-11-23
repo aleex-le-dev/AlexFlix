@@ -55,7 +55,7 @@ export function FilterBar({ sections, value, activeTab, onChange }: Props) {
           >
             {visible.map((section, index) => (
               <section key={section.tab} className={index > 0 ? 'mt-2 border-t border-white/10 pt-2' : ''}>
-                <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">{section.label}</p>
+                <p className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">{section.label}</p>
                 <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3">
                   {section.categories.map((category) => {
                     const active = category.name === value && section.tab === activeTab;
@@ -73,7 +73,7 @@ export function FilterBar({ sections, value, activeTab, onChange }: Props) {
                           <span className="truncate">{category.name}</span>
                           <span
                             className={`shrink-0 rounded-full px-1.5 text-[11px] tabular-nums transition ${
-                              active ? 'bg-ap-red text-white' : 'bg-white/5 text-neutral-500 group-hover/cat:text-neutral-300'
+                              active ? 'bg-ap-red text-white' : 'bg-white/5 text-neutral-400 group-hover/cat:text-neutral-300'
                             }`}
                           >
                             {category.count}

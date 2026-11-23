@@ -3,7 +3,7 @@ import { Autoplay, Keyboard, Mousewheel } from 'swiper/modules';
 import { Info, Play, Star } from 'lucide-react';
 import 'swiper/css';
 import type { MediaItem } from '../types';
-import { imageUrl } from '../lib/api';
+import { artUrl } from '../lib/api';
 import { formatRating, isUhd, itemMeta } from '../lib/format';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 }
 
 function HeroSlide({ item, active, onPlay, onInfo }: { item: MediaItem; active: boolean; onPlay: Props['onPlay']; onInfo: Props['onInfo'] }) {
-  const art = imageUrl(item.backdrop) ?? imageUrl(item.poster);
+  const art = artUrl(item.backdrop, 'hd') ?? artUrl(item.poster, 'md');
   return (
     <div className="relative h-full w-full overflow-hidden">
       {art ? (

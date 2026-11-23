@@ -71,8 +71,8 @@ export function MobileNav({ tab, onTab, sections, category, onCategory, myListCo
                       transition={{ type: 'spring', stiffness: 500, damping: 38 }}
                     />
                   )}
-                  <Icon className={`h-[22px] w-[22px] transition-colors ${active ? 'text-white' : 'text-neutral-500'}`} strokeWidth={active ? 2.4 : 2} />
-                  <span className={`max-w-[88%] truncate text-[11px] transition-colors ${active ? 'font-semibold text-white' : 'text-neutral-500'}`}>
+                  <Icon className={`h-[22px] w-[22px] transition-colors ${active ? 'text-white' : 'text-neutral-400'}`} strokeWidth={active ? 2.4 : 2} />
+                  <span className={`max-w-[88%] truncate text-[11px] transition-colors ${active ? 'font-semibold text-white' : 'text-neutral-400'}`}>
                     {label}
                   </span>
                 </button>
@@ -112,7 +112,7 @@ export function MobileNav({ tab, onTab, sections, category, onCategory, myListCo
               <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20" />
               {visible.map((section) => (
                 <section key={section.tab} className="mb-5">
-                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">{section.label}</p>
+                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">{section.label}</p>
                   <div className="flex flex-wrap gap-2">
                     {section.categories.map((item) => {
                       const active = item.name === category && section.tab === tab;
@@ -129,7 +129,7 @@ export function MobileNav({ tab, onTab, sections, category, onCategory, myListCo
                           }`}
                         >
                           {item.name}
-                          <span className={`text-xs tabular-nums ${active ? 'text-white/80' : 'text-neutral-500'}`}>{item.count}</span>
+                          <span className={`text-xs tabular-nums ${active ? 'text-white/80' : 'text-neutral-400'}`}>{item.count}</span>
                         </button>
                       );
                     })}

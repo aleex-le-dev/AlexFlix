@@ -167,7 +167,7 @@ export function Navbar({ profile, profiles, onSwitchProfile, onManageProfiles, o
                   <div className="my-1 h-px bg-white/10" />
                   {__VITRINE__ ? null : (
                   <>
-                  <p className="px-3 pb-2 pt-1 text-xs uppercase tracking-wider text-neutral-500">Bibliothèque Freebox</p>
+                  <p className="px-3 pb-2 pt-1 text-xs uppercase tracking-wider text-neutral-400">Bibliothèque Freebox</p>
                   <button
                     type="button"
                     disabled={scan?.running}

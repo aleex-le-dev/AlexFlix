@@ -91,7 +91,7 @@ export function Profiles({ profiles, startManaging = false, onSelect, onChange, 
                   className="group flex w-28 flex-col items-center gap-3 outline-hidden md:w-40"
                 >
                   <span className="grid h-28 w-28 place-items-center rounded-md transition group-hover:bg-white group-focus-visible:bg-white md:h-40 md:w-40">
-                    <Plus className="h-16 w-16 text-neutral-500 transition group-hover:text-black group-focus-visible:text-black md:h-20 md:w-20" />
+                    <Plus className="h-16 w-16 text-neutral-400 transition group-hover:text-black group-focus-visible:text-black md:h-20 md:w-20" />
                   </span>
                   <span className="text-lg text-neutral-400 transition group-hover:text-white md:text-xl">Ajouter un profil</span>
                 </button>

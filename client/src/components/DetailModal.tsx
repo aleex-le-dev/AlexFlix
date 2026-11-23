@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Clapperboard, Download, ImageOff, ListX, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaFileDTO, MediaItem, MediaType } from '../types';
-import { api, downloadUrl, imageUrl } from '../lib/api';
+import { api, artUrl, downloadUrl } from '../lib/api';
 import { lockScroll } from '../lib/scrollLock';
 
 function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: string; className: string }) {
@@ -144,7 +144,7 @@ export function DetailModal({
     badge: other.year ? String(other.year) : '',
     label: '',
     text: other.overview,
-    art: imageUrl(other.backdrop) ?? imageUrl(other.poster),
+    art: artUrl(other.backdrop, 'md') ?? artUrl(other.poster, 'md'),
     stacked: false
   });
   const similarCards = useMemo<SimilarCard[]>(() => {
@@ -175,7 +175,7 @@ export function DetailModal({
         badge: `${members.length} ${unit}`,
         label: isSaga ? 'Saga' : 'Dossier',
         text: members.map((member) => member.title).join(' · '),
-        art: imageUrl(members[0].backdrop) ?? imageUrl(members[0].poster),
+        art: artUrl(members[0].backdrop, 'md') ?? artUrl(members[0].poster, 'md'),
         stacked: true
       });
     }
@@ -183,7 +183,7 @@ export function DetailModal({
   }, [similar, all, item.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const episodes = item.files.filter((file) => (file.season ?? 0) === season);
-  const backdrop = imageUrl(item.backdrop) ?? imageUrl(item.poster);
+  const backdrop = artUrl(item.backdrop, 'hd') ?? artUrl(item.poster, 'md');
   const cast = showAllCast ? item.cast : item.cast.slice(0, 5);
 
   const submitMatch = async (event: FormEvent): Promise<void> => {
@@ -243,7 +243,7 @@ export function DetailModal({
               {backdrop ? (
                 <img src={backdrop} alt="" className="h-full w-full object-cover" />
               ) : (
-                <div className="grid h-full w-full place-items-center bg-linear-to-br from-[#3a0a0e] to-black text-neutral-600">
+                <div className="grid h-full w-full place-items-center bg-linear-to-br from-[#3a0a0e] to-black text-neutral-400">
                   <ImageOff className="h-12 w-12" />
                 </div>
               )}
@@ -350,7 +350,7 @@ export function DetailModal({
           <div className="space-y-3 text-sm">
             {item.cast.length > 0 && (
               <p>
-                <span className="text-neutral-500">Distribution : </span>
+                <span className="text-neutral-400">Distribution : </span>
                 <span className="text-neutral-200">{cast.join(', ')}</span>
                 {item.cast.length > 5 && (
                   <button type="button" onClick={() => setShowAllCast((value) => !value)} className="ml-1 italic text-neutral-400 hover:text-white">
@@ -361,13 +361,13 @@ export function DetailModal({
             )}
             {item.directors.length > 0 && (
               <p>
-                <span className="text-neutral-500">{item.type === 'tv' ? 'Création : ' : 'Réalisation : '}</span>
+                <span className="text-neutral-400">{item.type === 'tv' ? 'Création : ' : 'Réalisation : '}</span>
                 <span className="text-neutral-200">{item.directors.join(', ')}</span>
               </p>
             )}
             {item.categories.length > 0 && (
               <p>
-                <span className="text-neutral-500">Catégorie : </span>
+                <span className="text-neutral-400">Catégorie : </span>
                 {item.categories.map((category, index) => (
                   <span key={category}>
                     <button type="button" onClick={() => onFilterGenre(category)} className="text-neutral-200 hover:text-white hover:underline">
@@ -380,7 +380,7 @@ export function DetailModal({
             )}
             {item.genres.length > 0 && (
               <p>
-                <span className="text-neutral-500">Genres : </span>
+                <span className="text-neutral-400">Genres : </span>
                 <span className="text-neutral-200">{item.genres.join(', ')}</span>
               </p>
             )}
@@ -411,7 +411,7 @@ export function DetailModal({
               {episodes.map((file) => {
                 const meta =
                   file.season !== null && file.episode !== null ? item.seasons[String(file.season)]?.episodes[String(file.episode)] : undefined;
-                const still = imageUrl(meta?.still) ?? backdrop;
+                const still = artUrl(meta?.still) ?? backdrop;
                 const ratio = progressRatio(progress[file.id] ?? null);
                 return (
                   <li key={file.id} className="flex items-center gap-2">
@@ -468,7 +468,7 @@ export function DetailModal({
                   >
                     <Play className="h-4 w-4 shrink-0 fill-current" />
                     <span className="min-w-0 flex-1 truncate text-neutral-200">{file.name}</span>
-                    <span className="shrink-0 text-neutral-500">{formatSize(file.size)}</span>
+                    <span className="shrink-0 text-neutral-400">{formatSize(file.size)}</span>
                   </button>
                   <DownloadLink
                     file={file}
@@ -559,8 +559,8 @@ export function DetailModal({
             {!tmdbEnabled && <span className="text-xs">TMDB_API_KEY absente du .env.</span>}
             {matchState.error && <span className="text-xs text-[#ffb45a]">{matchState.error}</span>}
           </form>
-          <p className="mt-2 text-xs text-neutral-500">L'ID se trouve dans l'URL TMDB : themoviedb.org/movie/603 → 603.</p>
-          <ul className="mt-3 space-y-1 text-xs text-neutral-500">
+          <p className="mt-2 text-xs text-neutral-400">L'ID se trouve dans l'URL TMDB : themoviedb.org/movie/603 → 603.</p>
+          <ul className="mt-3 space-y-1 text-xs text-neutral-400">
             {item.files.map((file) => (
               <li key={file.id} className="truncate">
                 {file.name} · {formatSize(file.size)}

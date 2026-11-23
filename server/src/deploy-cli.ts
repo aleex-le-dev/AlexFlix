@@ -5,6 +5,7 @@ import { Client } from 'basic-ftp';
 import { config, PROJECT_ROOT, validateConfig } from './config.js';
 import { FreeboxClient } from './lib/freebox.js';
 import { imagesDir } from './lib/images.js';
+import { buildWebImages, fetchHdBackdrops, webImagesDir } from './lib/webp.js';
 import { idleStatus, Scanner } from './lib/scanner.js';
 import { ensurePeople } from './lib/people.js';
 import { CatalogStore } from './lib/store.js';
@@ -171,6 +172,10 @@ const people = await ensurePeople(
 );
 for (const person of people) imageNames.add(person.image);
 
+// Images WebP (rangées, fiche, bannière HD) publiées dans /img/ ; les JPEG restent dans /images/.
+await fetchHdBackdrops(Object.values(store.data.items).filter((item) => item.fileIds.length > 0), log);
+const webImageNames = await buildWebImages(imageNames, log);
+
 const catalog = {
   updatedAt: new Date().toISOString(),
   baselineAt: store.baselineAt(),
@@ -264,6 +269,7 @@ try {
 
   await syncDir(path.join(distDir, 'assets'), remotePath('assets'), null, 'Interface');
   await syncDir(imagesDir, remotePath('images'), [...imageNames], 'Pochettes');
+  await syncDir(webImagesDir, remotePath('img'), webImageNames, 'Images WebP');
 
   const rootFiles = (await fs.readdir(distDir, { withFileTypes: true }))
     .filter((entry) => entry.isFile() && entry.name !== 'index.html')

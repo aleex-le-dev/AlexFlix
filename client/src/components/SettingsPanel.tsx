@@ -158,7 +158,7 @@ export function SettingsPanel({ onClose }: Props) {
                   ['Échecs', status.failed]
                 ].map(([label, value]) => (
                   <div key={label} className="rounded-lg bg-black/30 px-3 py-2">
-                    <dt className="text-[11px] uppercase tracking-wider text-neutral-500">{label}</dt>
+                    <dt className="text-[11px] uppercase tracking-wider text-neutral-400">{label}</dt>
                     <dd className={`text-lg font-semibold tabular-nums ${label === 'Échecs' && Number(value) > 0 ? 'text-amber-400' : 'text-white'}`}>{value}</dd>
                   </div>
                 ))}
@@ -172,9 +172,9 @@ export function SettingsPanel({ onClose }: Props) {
                 )}
                 <p>
                   Sons disponibles sur le site : <span className="font-semibold text-white">{status.published}</span>
-                  <span className="text-neutral-500"> · mis à jour {ago(status.publishedAt)} (tous les 25 films)</span>
+                  <span className="text-neutral-400"> · mis à jour {ago(status.publishedAt)} (tous les 25 films)</span>
                 </p>
-                <p className="text-neutral-500">Dernière nouvelle du PC : {ago(status.updatedAt)}</p>
+                <p className="text-neutral-400">Dernière nouvelle du PC : {ago(status.updatedAt)}</p>
                 {state === 'stale' && (
                   <p className="text-amber-400">Plus de nouvelles depuis 10 min : le PC est peut-être éteint. Relancez « npm run audio » ou deploy.bat.</p>
                 )}
@@ -182,7 +182,7 @@ export function SettingsPanel({ onClose }: Props) {
 
               {status.current.length > 0 && state === 'running' && (
                 <div className="mt-5">
-                  <p className="text-[11px] uppercase tracking-wider text-neutral-500">En cours de conversion</p>
+                  <p className="text-[11px] uppercase tracking-wider text-neutral-400">En cours de conversion</p>
                   <ul className="mt-2 space-y-1.5">
                     {status.current.map((name) => (
                       <li key={name} className="flex items-center gap-2 truncate text-sm text-neutral-200">

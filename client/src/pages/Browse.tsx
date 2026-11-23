@@ -205,7 +205,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
         <div className="grid min-h-screen place-items-center px-6 text-center">
           <div className="max-w-lg">
             <Logo size="lg" />
-            <FolderSearch className="mx-auto mt-10 h-14 w-14 text-neutral-500" />
+            <FolderSearch className="mx-auto mt-10 h-14 w-14 text-neutral-400" />
             <h1 className="mt-4 text-2xl font-semibold text-white">Aucun titre dans la bibliothèque</h1>
             <p className="mt-3 text-neutral-400">
               Vérifiez que le disque de la Freebox est monté et que <code className="rounded bg-white/10 px-1">MEDIA_PATH</code> pointe vers le
@@ -328,7 +328,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
 
       {renderContent()}
 
-      <footer className="relative z-[1] mt-auto px-4 pb-6 pt-16 text-center text-xs text-neutral-600 md:px-12">
+      <footer className="relative z-[1] mt-auto px-4 pb-6 pt-16 text-center text-xs text-neutral-400 md:px-12">
         <p>AlexFlix · Bibliothèque personnelle Freebox</p>
       </footer>
 

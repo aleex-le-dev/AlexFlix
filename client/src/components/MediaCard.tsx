@@ -2,7 +2,7 @@ import { memo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'rea
 import { motion } from 'framer-motion';
 import { Check, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaItem } from '../types';
-import { imageUrl } from '../lib/api';
+import { artUrl } from '../lib/api';
 import { hideAmbient, showAmbient } from '../lib/ambient';
 import { formatRating, isRecent, isUhd, itemMeta } from '../lib/format';
 
@@ -21,8 +21,6 @@ interface Props {
    */
   expandable?: boolean;
   wide?: boolean;
-  /** Rangées de saga : au survol, la bande-annonce YouTube remplace le fond flouté de la page. */
-  trailerPreview?: boolean;
 }
 
 export const MediaCard = memo(function MediaCard({
@@ -34,13 +32,12 @@ export const MediaCard = memo(function MediaCard({
   onToggleFavorite,
   onRemove,
   expandable = false,
-  wide = false,
-  trailerPreview = false
+  wide = false
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [broken, setBroken] = useState(false);
-  const poster = imageUrl(item.poster);
-  const backdrop = imageUrl(item.backdrop);
+  const poster = artUrl(item.poster, 'sm');
+  const backdrop = artUrl(item.backdrop, 'md');
   const meta = itemMeta(item);
 
   const onMove = (event: MouseEvent<HTMLDivElement>): void => {
@@ -58,7 +55,7 @@ export const MediaCard = memo(function MediaCard({
 
   const onEnter = (): void => {
     if (!expandable) ref.current?.style.setProperty('--s', '1.1');
-    if (poster && !broken) showAmbient(poster, trailerPreview ? item.trailer : null);
+    if (poster && !broken) showAmbient(poster);
   };
 
   const onLeave = (): void => {
