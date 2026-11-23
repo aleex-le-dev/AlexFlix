@@ -10,6 +10,8 @@ export interface Profile {
   name: string;
   /** Avatar prédéfini, image importée (`custom:<hash>` en ligne) ou image locale (`data:` sur le serveur maison). */
   avatar: AvatarId | string;
+  /** Profil Enfants : seulement les titres « Tous publics » / -10 (ou animation / familial si âge inconnu). */
+  kids?: boolean;
 }
 
 export interface EpisodeMeta {
@@ -57,6 +59,10 @@ export interface MediaItem {
   genres: string[];
   /** Catégories = dossiers de premier niveau du disque Freebox (classement de l'utilisateur). */
   categories: string[];
+  /** Âge minimal conseillé (classification TMDB FR, sinon US) ; null = inconnu. */
+  age?: number | null;
+  /** Classification américaine convertie (G = 0, PG = 10, PG-13 = 12) ; plus stricte, sert au profil Enfants. */
+  ageUs?: number | null;
   /** Sous-dossiers sous la catégorie (sagas) : « Marvel · La Saga de l'Infini ». */
   collections?: string[];
   keywords: string[];
@@ -94,6 +100,8 @@ export interface PersonAvatar {
   name: string;
   character: string;
   film: string;
+  /** Saga du disque (« Harry Potter », « Marvel · La Saga de l'Infini »…) ou « Films cultes ». */
+  group?: string;
 }
 
 export interface CatalogResponse {

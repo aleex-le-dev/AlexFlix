@@ -71,6 +71,22 @@ export const TOP_CATEGORY = 'Les mieux notés';
 export const rankByRating = (list: MediaItem[]): MediaItem[] =>
   list.filter((item) => item.rating > 0).sort((a, b) => b.rating - a.rating || b.voteCount - a.voteCount);
 
+/**
+ * Profil Enfants (jeunes enfants) : uniquement l'animation et les films familiaux,
+ * et en plus classés « Tous publics » / -10 quand l'âge est connu. Jamais d'horreur.
+ */
+const KIDS_MAX_AGE = 10;
+const KIDS_GENRES = /animation|familial|famille/i;
+export function kidsAllowed(item: MediaItem): boolean {
+  if (item.genres.some((genre) => /horreur/i.test(genre))) return false;
+  if (!item.genres.some((genre) => KIDS_GENRES.test(genre))) return false;
+  if (typeof item.age === 'number' && item.age > KIDS_MAX_AGE) return false;
+  // Animation : la classification suffit. Film familial « live » : il faut aussi G ou PG aux États-Unis
+  // (TMDB étiquette « Familial » des comédies comme Alibi.com).
+  if (item.genres.some((genre) => /animation/i.test(genre))) return true;
+  return typeof item.ageUs === 'number' && item.ageUs <= KIDS_MAX_AGE;
+}
+
 export function filterItems(items: MediaItem[], filters: Filters): MediaItem[] {
   return items.filter((item) => {
     if (filters.tab === 'movies' && item.type !== 'movie') return false;

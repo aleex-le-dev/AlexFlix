@@ -164,3 +164,13 @@ button:disabled {
 input[type="range"].ap-range {
   accent-color: #e50914;
 }
+
+/* Lecteur : barre « Épisode suivant » qui se remplit en 10 s (Netflix). */
+@keyframes ap-next-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.ap-next-fill {
+  width: 0%;
+  animation: ap-next-fill 10s linear forwards;
+}

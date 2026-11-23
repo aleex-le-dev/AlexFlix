@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { FolderSearch, RefreshCw } from 'lucide-react';
 import type { MediaItem, Profile, RowFilter, ScanStatus, Tab } from '../types';
 import { api } from '../lib/api';
-import { buildRows, facetsOf, filterItems, pickFeatured, rankByRating, resumeFileId, sortSearchResults, TOP_CATEGORY } from '../lib/catalog';
+import { buildRows, facetsOf, filterItems, itemProgress, kidsAllowed, pickFeatured, progressRatio, rankByRating, resumeFileId, sortSearchResults, TOP_CATEGORY } from '../lib/catalog';
 import { getProgressMap, removeFromContinue, toggleFavorite } from '../lib/storage';
 import { useCatalog } from '../hooks/useCatalog';
 import { useFavorites, useProgress } from '../hooks/useStorage';
@@ -14,6 +14,7 @@ import { Row } from '../components/Row';
 import { Grid } from '../components/Grid';
 import { SearchBar } from '../components/SearchBar';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { QuickSheet } from '../components/QuickSheet';
 import { DetailModal } from '../components/DetailModal';
 import { Player } from '../components/Player';
 import { ScanToast } from '../components/ScanToast';
@@ -78,7 +79,8 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
     if (next !== `${window.location.pathname}${window.location.search}`) window.history.replaceState(null, '', next);
   }, [tab, genre, query, selectedId]);
 
-  const items = useMemo(() => data?.items ?? [], [data]);
+  // Profil Enfants : tout le site (rangées, recherche, catégories, bannière) ne montre que les titres adaptés.
+  const items = useMemo(() => (data?.items ?? []).filter((item) => !profile.kids || kidsAllowed(item)), [data, profile.kids]);
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
   const tabItems = useMemo(
@@ -149,6 +151,12 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   }, []);
 
   const openItem = useCallback((item: MediaItem) => setSelectedId(item.id), []);
+  /** Toucher une affiche sur mobile : aperçu rapide (panneau du bas) ; à la souris : fiche complète. */
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const openFromCard = useCallback((item: MediaItem) => {
+    if (window.matchMedia('(hover: none)').matches) setPreviewId(item.id);
+    else setSelectedId(item.id);
+  }, []);
   const closeItem = useCallback(() => setSelectedId(null), []);
 
   const play = useCallback((item: MediaItem, fileId?: string) => {
@@ -273,7 +281,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
                   ? 'Ajoutez des films et séries à Ma liste avec le bouton +.'
                   : 'Aucun titre ne correspond. Essayez un autre titre, acteur ou genre.'
               }
-              onOpen={openItem}
+              onOpen={openFromCard}
               onPlay={playDefault}
               onToggleFavorite={toggleFav}
             />
@@ -284,7 +292,7 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
                 row={row}
                 progress={progress}
                 favorites={favorites}
-                onOpen={openItem}
+                onOpen={openFromCard}
                 onPlay={playDefault}
                 onToggleFavorite={toggleFav}
                 onExplore={explore}
@@ -345,6 +353,12 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
             onPlay={play}
             onToggleFavorite={toggleFav}
             onRemoveProgress={removeContinue}
+            onSearchPerson={(name) => {
+              setSelectedId(null);
+              setQuery(name);
+              setSearchMode(true);
+              window.scrollTo({ top: 0 });
+            }}
             onSelect={openItem}
             onFilterGenre={filterGenre}
             onRematched={() => {
@@ -368,6 +382,27 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
       </AnimatePresence>
 
       <AnimatePresence>{settingsOpen && <SettingsPanel key="settings" onClose={closeSettings} />}</AnimatePresence>
+
+      <AnimatePresence>
+        {previewId && byId.get(previewId) && (
+          <QuickSheet
+            key="quick"
+            item={byId.get(previewId) as MediaItem}
+            isFavorite={favorites.includes(previewId)}
+            progress={progressRatio(itemProgress(byId.get(previewId) as MediaItem, progress))}
+            onPlay={(item) => {
+              setPreviewId(null);
+              play(item);
+            }}
+            onToggleFavorite={toggleFav}
+            onMore={(item) => {
+              setPreviewId(null);
+              setSelectedId(item.id);
+            }}
+            onClose={() => setPreviewId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <ScanToast scan={scan} />
     </div>

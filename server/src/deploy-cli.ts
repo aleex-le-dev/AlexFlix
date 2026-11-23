@@ -6,6 +6,7 @@ import { config, PROJECT_ROOT, validateConfig } from './config.js';
 import { FreeboxClient } from './lib/freebox.js';
 import { imagesDir } from './lib/images.js';
 import { buildWebImages, fetchHdBackdrops, webImagesDir } from './lib/webp.js';
+import { loadAges } from './lib/ages.js';
 import { idleStatus, Scanner } from './lib/scanner.js';
 import { ensurePeople } from './lib/people.js';
 import { CatalogStore } from './lib/store.js';
@@ -148,10 +149,14 @@ const audioUrlOf = (fileId: string): string | null => {
   return track?.status === 'done' && track.url && track.relPath === store.data.files[fileId]?.relPath ? track.url : null;
 };
 type PublishedFile = ItemDTO['files'][number] & { downloadUrl: string | null; audioUrl: string | null };
-const items: Array<Omit<ItemDTO, 'files'> & { files: PublishedFile[] }> = store
+// Âge conseillé (profil Enfants), classification TMDB mise en cache.
+const ages = await loadAges(Object.values(store.data.items).filter((item) => item.fileIds.length > 0), log);
+const items: Array<Omit<ItemDTO, 'files'> & { files: PublishedFile[]; age: number | null; ageUs: number | null }> = store
   .list()
   .map((item) => ({
     ...item,
+    age: ages[item.id]?.fr ?? ages[item.id]?.us ?? null,
+    ageUs: ages[item.id]?.us ?? null,
     files: item.files.map((file) => ({ ...file, downloadUrl: links[file.id]?.url ?? null, audioUrl: audioUrlOf(file.id) }))
   }));
 log(`Pistes son AAC : ${items.reduce((count, item) => count + item.files.filter((file) => file.audioUrl).length, 0)} vidéo(s).`);
@@ -166,10 +171,8 @@ for (const item of items) {
   }
 }
 
-const people = await ensurePeople(
-  Object.values(store.data.items).filter((item) => item.fileIds.length > 0),
-  log
-);
+// Visages par saga : la liste publiée porte les sagas (collections = sous-dossiers du disque).
+const people = await ensurePeople(items, log);
 for (const person of people) imageNames.add(person.image);
 
 // Images WebP (rangées, fiche, bannière HD) publiées dans /img/ ; les JPEG restent dans /images/.

@@ -14,7 +14,7 @@ import {
   VolumeX
 } from 'lucide-react';
 import type { MediaItem, StreamInfo } from '../types';
-import { api, audioTrackUrl, streamUrl, transcodeUrl } from '../lib/api';
+import { api, artUrl, audioTrackUrl, streamUrl, transcodeUrl } from '../lib/api';
 import { lockScroll } from '../lib/scrollLock';
 import { hasNoAudio, openInVlc, supportsDolby, vlcHint } from '../lib/externalPlayer';
 import { episodeLabel, formatClock } from '../lib/format';
@@ -79,6 +79,8 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
   const [muted, setMuted] = useState(() => getPrefs().muted);
   const [hoverPct, setHoverPct] = useState<number | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** « Regarder le générique » : masque la carte Épisode suivant pour ce fichier. */
+  const [creditsMode, setCreditsMode] = useState(false);
 
   const index = item.files.findIndex((file) => file.id === fileId);
   const file = index >= 0 ? item.files[index] : item.files[0];
@@ -139,6 +141,7 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     durationRef.current = 0;
     setInfo(null);
     setNoAudio(false);
+    setCreditsMode(false);
     audioCheck.current = { start: null, done: false };
     setMode(null);
     setSrc('');
@@ -399,7 +402,10 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
 
   const showUi = uiVisible || !playing || Boolean(error);
   const pct = (value: number): string => `${duration > 0 ? Math.min(100, (value / duration) * 100) : 0}%`;
-  const nearEnd = Boolean(nextFile) && duration > 0 && duration - time < 40;
+  // Carte « Épisode suivant » : 25 dernières secondes (générique), décompte de 10 s qui se met en pause avec la vidéo.
+  const nearEnd = Boolean(nextFile) && !creditsMode && duration > 60 && duration - time < 25;
+  const nextMeta =
+    nextFile && nextFile.season !== null && nextFile.episode !== null ? item.seasons[String(nextFile.season)]?.episodes[String(nextFile.episode)] : undefined;
 
   return (
     <motion.div
@@ -635,15 +641,51 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
       </div>
 
       {nearEnd && nextFile && (
-        <motion.button
-          type="button"
-          initial={{ opacity: 0, x: 40 }}
-          animate={{ opacity: 1, x: 0 }}
-          onClick={goNext}
-          className="absolute bottom-28 right-6 inline-flex items-center gap-2 rounded bg-white px-5 py-3 font-semibold text-black shadow-2xl hover:bg-white/85 md:right-10"
+        <motion.div
+          key={nextFile.id}
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="absolute bottom-28 right-4 z-10 w-[min(380px,calc(100vw-2rem))] overflow-hidden rounded-lg bg-black/85 shadow-2xl ring-1 ring-white/15 backdrop-blur-md md:right-10"
         >
-          <SkipForward className="h-5 w-5 fill-current" /> Épisode suivant · {episodeLabel(nextFile)}
-        </motion.button>
+          <div className="flex gap-3 p-3">
+            <div className="relative aspect-video w-32 shrink-0 overflow-hidden rounded bg-neutral-800">
+              {(artUrl(nextMeta?.still) ?? artUrl(item.backdrop)) && (
+                <img src={artUrl(nextMeta?.still) ?? artUrl(item.backdrop) ?? undefined} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wider text-neutral-400">Épisode suivant</p>
+              <p className="mt-0.5 text-sm font-semibold text-white">{episodeLabel(nextFile)}</p>
+              {nextMeta?.name && <p className="line-clamp-2 text-sm text-neutral-300">{nextMeta.name}</p>}
+            </div>
+          </div>
+          <div className="flex gap-2 px-3 pb-3">
+            <button
+              type="button"
+              onClick={goNext}
+              className="relative flex-1 overflow-hidden rounded bg-white/25 py-2.5 text-sm font-semibold text-black"
+            >
+              {/* Barre qui se remplit en 10 s puis lance l'épisode ; suit la pause de la vidéo. */}
+              <span
+                aria-hidden="true"
+                onAnimationEnd={goNext}
+                className="ap-next-fill absolute inset-y-0 left-0 bg-white"
+                style={{ animationPlayState: playing ? 'running' : 'paused' }}
+              />
+              <span className="relative inline-flex items-center gap-2">
+                <Play className="h-4 w-4 fill-current" /> Épisode suivant
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreditsMode(true)}
+              className="rounded bg-white/10 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              Voir le générique
+            </button>
+          </div>
+        </motion.div>
       )}
     </motion.div>
   );

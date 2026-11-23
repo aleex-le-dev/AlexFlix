@@ -5,6 +5,7 @@ import type { MediaItem } from '../types';
 import { artUrl } from '../lib/api';
 import { hideAmbient, showAmbient } from '../lib/ambient';
 import { formatRating, isRecent, isUhd, itemMeta } from '../lib/format';
+import { SmoothImg } from './SmoothImg';
 
 interface Props {
   item: MediaItem;
@@ -107,12 +108,10 @@ export const MediaCard = memo(function MediaCard({
         }`}
       >
         {poster && !broken ? (
-          <img
+          <SmoothImg
             src={poster}
             alt={item.title}
             loading="lazy"
-            decoding="async"
-            draggable={false}
             onError={() => setBroken(true)}
             className={`h-full w-full object-cover transition duration-500 ${
               expandable ? '' : 'group-hover/card:brightness-[0.55] group-focus-within/card:brightness-[0.55]'

@@ -73,6 +73,11 @@ export function Profiles({ profiles, startManaging = false, onSelect, onChange, 
                 >
                   <span className="relative block h-28 w-28 overflow-hidden rounded-md ring-[3px] ring-transparent transition duration-200 group-hover:ring-white group-focus-visible:ring-white md:h-40 md:w-40">
                     <ProfileAvatar avatar={profile.avatar} className="h-full w-full" />
+                    {profile.kids && (
+                      <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 to-transparent pb-1.5 pt-4 text-center text-xs font-bold uppercase tracking-wider text-white">
+                        Enfants
+                      </span>
+                    )}
                     {managing && (
                       <span className="absolute inset-0 grid place-items-center bg-black/55">
                         <Pencil className="h-9 w-9 text-white" />
@@ -150,6 +155,7 @@ function ProfileEditor({ editing, canDelete, onCancel, onSave, onDelete, onAvata
   const initial = editing.mode === 'edit' ? editing.profile : null;
   const [name, setName] = useState(initial?.name ?? '');
   const [avatar, setAvatar] = useState<string>(initial?.avatar ?? 'blue');
+  const [kids, setKids] = useState(Boolean(initial?.kids));
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +238,7 @@ function ProfileEditor({ editing, canDelete, onCancel, onSave, onDelete, onAvata
       setError('Indiquez un nom.');
       return;
     }
-    void run(() => onSave({ id: initial?.id ?? newProfileId(clean), name: clean.slice(0, 20), avatar }));
+    void run(() => onSave({ id: initial?.id ?? newProfileId(clean), name: clean.slice(0, 20), avatar, kids }));
   };
 
   return (
@@ -258,6 +264,18 @@ function ProfileEditor({ editing, canDelete, onCancel, onSave, onDelete, onAvata
               aria-label="Nom du profil"
               className="w-full bg-neutral-600 px-4 py-2.5 text-lg text-white outline-hidden placeholder:text-neutral-300 focus:ring-2 focus:ring-white"
             />
+            <label className="mt-4 flex cursor-pointer select-none items-start gap-3">
+              <input
+                type="checkbox"
+                checked={kids}
+                onChange={(event) => setKids(event.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer accent-ap-red"
+              />
+              <span>
+                <span className="block font-medium text-white">Profil Enfants</span>
+                <span className="block text-sm text-neutral-400">Seulement les films et séries « Tous publics » et « -10 ans ».</span>
+              </span>
+            </label>
             <p className="mt-5 text-sm text-neutral-400">Image de profil</p>
             <div className="mt-2 flex flex-wrap gap-3">
               <input
@@ -310,15 +328,29 @@ function ProfileEditor({ editing, canDelete, onCancel, onSave, onDelete, onAvata
             {people.length > 0 && (
               <>
                 <p className="mt-5 text-sm text-neutral-400">Les visages de vos films</p>
-                <div className="no-scrollbar mt-2 grid max-h-64 grid-cols-5 gap-3 overflow-y-auto p-1 sm:grid-cols-7">
-                  {people.map((person) => (
-                    <AvatarChoice
-                      key={person.image}
-                      avatar={`film:${person.image}`}
-                      label={`${person.name}${person.character ? ` (${person.character})` : ''} · ${person.film}`}
-                      selected={avatar === `film:${person.image}`}
-                      onPick={setAvatar}
-                    />
+                {/* Une ligne par saga (Harry Potter, Marvel, Star Wars…), puis les films cultes. */}
+                <div className="no-scrollbar mt-2 max-h-80 space-y-4 overflow-y-auto pr-1">
+                  {[...people.reduce((groups, person) => {
+                    const key = person.group ?? 'Vos films';
+                    groups.set(key, [...(groups.get(key) ?? []), person]);
+                    return groups;
+                  }, new Map<string, PersonAvatar[]>())].map(([group, members]) => (
+                    <section key={group}>
+                      <p className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-300">{group}</p>
+                      <div className="no-scrollbar flex gap-3 overflow-x-auto p-1">
+                        {members.map((person) => (
+                          <div key={person.image} className="w-14 shrink-0">
+                            <AvatarChoice
+                              avatar={`film:${person.image}`}
+                              label={`${person.name}${person.character ? ` (${person.character})` : ''} · ${person.film}`}
+                              selected={avatar === `film:${person.image}`}
+                              onPick={setAvatar}
+                            />
+                            <p className="mt-1 truncate text-center text-[10px] leading-tight text-neutral-400">{person.name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </>

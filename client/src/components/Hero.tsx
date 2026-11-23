@@ -5,6 +5,7 @@ import 'swiper/css';
 import type { MediaItem } from '../types';
 import { artUrl } from '../lib/api';
 import { formatRating, isUhd, itemMeta } from '../lib/format';
+import { SmoothImg } from './SmoothImg';
 
 interface Props {
   items: MediaItem[];
@@ -17,10 +18,9 @@ function HeroSlide({ item, active, onPlay, onInfo }: { item: MediaItem; active: 
   return (
     <div className="relative h-full w-full overflow-hidden">
       {art ? (
-        <img
+        <SmoothImg
           src={art}
           alt=""
-          draggable={false}
           className={`h-full w-full object-cover object-top ${active ? 'animate-kenburns' : ''}`}
         />
       ) : (

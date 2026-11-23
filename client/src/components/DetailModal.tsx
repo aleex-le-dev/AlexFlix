@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useDragControls } from 'framer-motion';
 import { Check, Clapperboard, Download, ImageOff, ListX, Play, Plus, Star, X } from 'lucide-react';
 import type { MediaFileDTO, MediaItem, MediaType } from '../types';
 import { api, artUrl, downloadUrl } from '../lib/api';
@@ -27,6 +27,7 @@ function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: 
 import { groupSagas, itemProgress, progressRatio, resumeFileId } from '../lib/catalog';
 import { capitalize, episodeLabel, formatRating, formatSize, itemMeta } from '../lib/format';
 import type { ProgressEntry } from '../lib/storage';
+import { SmoothImg } from './SmoothImg';
 
 interface Props {
   item: MediaItem;
@@ -38,6 +39,8 @@ interface Props {
   onPlay: (item: MediaItem, fileId?: string) => void;
   onToggleFavorite: (id: string) => void;
   onRemoveProgress: (id: string) => void;
+  /** Clic sur un acteur / réalisateur : recherche de ses titres dans la bibliothèque. */
+  onSearchPerson: (name: string) => void;
   onSelect: (item: MediaItem) => void;
   onFilterGenre: (genre: string) => void;
   onRematched: () => void;
@@ -53,11 +56,15 @@ export function DetailModal({
   onPlay,
   onToggleFavorite,
   onRemoveProgress,
+  onSearchPerson,
   onSelect,
   onFilterGenre,
   onRematched
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  /** Mobile : glisser l'image du haut vers le bas ferme la fiche. */
+  const dragControls = useDragControls();
+  const touchDevice = typeof window !== 'undefined' && window.matchMedia('(hover: none)').matches;
   const [showTrailer, setShowTrailer] = useState(false);
   const [showAllCast, setShowAllCast] = useState(false);
   const seasons = useMemo(() => [...new Set(item.files.map((file) => file.season ?? 0))].sort((a, b) => a - b), [item]);
@@ -226,9 +233,23 @@ export function DetailModal({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 40, scale: 0.96 }}
         transition={{ type: 'spring', damping: 26, stiffness: 260 }}
+        drag={touchDevice ? 'y' : false}
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.7 }}
+        onDragEnd={(_, info) => {
+          if (info.offset.y > 110 || info.velocity.y > 600) onClose();
+        }}
         className="relative mx-auto my-6 w-[calc(100%-1.5rem)] max-w-[920px] overflow-hidden rounded-lg bg-ap-panel shadow-[0_40px_120px_rgba(0,0,0,0.9)] ring-1 ring-white/10 md:my-10"
       >
-        <div className="relative aspect-video w-full bg-black">
+        <div
+          className="relative aspect-video w-full touch-pan-x bg-black"
+          onPointerDown={(event) => {
+            if (touchDevice && (scrollRef.current?.scrollTop ?? 0) <= 4) dragControls.start(event);
+          }}
+        >
+          {touchDevice && <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-1.5 w-10 -translate-x-1/2 rounded-full bg-white/60 shadow" />}
           {showTrailer && item.trailer ? (
             <iframe
               src={`https://www.youtube-nocookie.com/embed/${item.trailer}?autoplay=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
@@ -241,7 +262,7 @@ export function DetailModal({
           ) : (
             <>
               {backdrop ? (
-                <img src={backdrop} alt="" className="h-full w-full object-cover" />
+                <SmoothImg src={backdrop} alt="" className="h-full w-full object-cover" />
               ) : (
                 <div className="grid h-full w-full place-items-center bg-linear-to-br from-[#3a0a0e] to-black text-neutral-400">
                   <ImageOff className="h-12 w-12" />
@@ -351,7 +372,21 @@ export function DetailModal({
             {item.cast.length > 0 && (
               <p>
                 <span className="text-neutral-400">Distribution : </span>
-                <span className="text-neutral-200">{cast.join(', ')}</span>
+                <span className="text-neutral-200">
+                  {cast.map((name, index) => (
+                    <span key={name}>
+                      {index > 0 && ', '}
+                      <button
+                        type="button"
+                        onClick={() => onSearchPerson(name)}
+                        title={`Voir les titres avec ${name}`}
+                        className="text-neutral-200 underline-offset-2 transition hover:text-white hover:underline"
+                      >
+                        {name}
+                      </button>
+                    </span>
+                  ))}
+                </span>
                 {item.cast.length > 5 && (
                   <button type="button" onClick={() => setShowAllCast((value) => !value)} className="ml-1 italic text-neutral-400 hover:text-white">
                     {showAllCast ? 'moins' : 'plus'}
@@ -362,7 +397,21 @@ export function DetailModal({
             {item.directors.length > 0 && (
               <p>
                 <span className="text-neutral-400">{item.type === 'tv' ? 'Création : ' : 'Réalisation : '}</span>
-                <span className="text-neutral-200">{item.directors.join(', ')}</span>
+                <span className="text-neutral-200">
+                  {item.directors.map((name, index) => (
+                    <span key={name}>
+                      {index > 0 && ', '}
+                      <button
+                        type="button"
+                        onClick={() => onSearchPerson(name)}
+                        title={`Voir les titres avec ${name}`}
+                        className="text-neutral-200 underline-offset-2 transition hover:text-white hover:underline"
+                      >
+                        {name}
+                      </button>
+                    </span>
+                  ))}
+                </span>
               </p>
             )}
             {item.categories.length > 0 && (
@@ -424,7 +473,7 @@ export function DetailModal({
                     >
                       <span className="w-7 shrink-0 text-center text-xl text-neutral-400">{file.episode ?? '•'}</span>
                       <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded bg-neutral-800 md:w-40">
-                        {still && <img src={still} alt="" loading="lazy" className="h-full w-full object-cover" />}
+                        {still && <SmoothImg src={still} alt="" loading="lazy" className="h-full w-full object-cover" />}
                         <div className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition group-hover/ep:opacity-100">
                           <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-black/50">
                             <Play className="h-4 w-4 fill-current" />
@@ -506,7 +555,7 @@ export function DetailModal({
                   <span className="relative block overflow-hidden rounded-md bg-[#2f2f2f] transition group-hover/sim:bg-[#3a3a3a]">
                     <span className="relative block aspect-video overflow-hidden bg-neutral-800">
                       {card.art && (
-                        <img src={card.art} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover/sim:scale-105" />
+                        <SmoothImg src={card.art} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover/sim:scale-105" />
                       )}
                       {card.badge && (
                         <span className={`absolute right-2 top-2 rounded px-1.5 text-xs font-semibold text-white ${card.stacked ? 'bg-ap-red' : 'bg-black/70'}`}>

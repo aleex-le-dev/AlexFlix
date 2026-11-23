@@ -215,7 +215,7 @@ function ap_clean_profiles($input): ?array
     $film = preg_match('/^film:([a-z0-9-]+\.jpg)$/', $avatar, $match) === 1 && is_file(__DIR__ . '/images/' . $match[1]);
     if (!$custom && !$film && !in_array($avatar, AP_AVATARS, true)) $avatar = 'red';
     $ids[$id] = true;
-    $out[] = ['id' => $id, 'name' => $name, 'avatar' => $avatar];
+    $out[] = ['id' => $id, 'name' => $name, 'avatar' => $avatar, 'kids' => !empty($profile['kids'])];
   }
   return $out;
 }
