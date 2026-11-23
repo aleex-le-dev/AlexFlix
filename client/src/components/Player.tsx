@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
+  ListVideo,
   LoaderCircle,
   Maximize,
   Minimize,
@@ -25,6 +26,9 @@ interface Props {
   fileId: string;
   onClose: () => void;
   onChangeFile: (fileId: string) => void;
+  /** Films de la même saga (ordre des épisodes), pour le panneau « Saga » du lecteur. */
+  saga?: MediaItem[];
+  onPlayItem?: (item: MediaItem) => void;
 }
 
 type Mode = 'direct' | 'transcode';
@@ -48,7 +52,7 @@ function isBuffered(video: HTMLVideoElement, time: number): boolean {
   return false;
 }
 
-export function Player({ item, fileId, onClose, onChangeFile }: Props) {
+export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayItem }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
@@ -81,6 +85,9 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
   const [dragging, setDragging] = useState(false);
   /** « Regarder le générique » : masque la carte Épisode suivant pour ce fichier. */
   const [creditsMode, setCreditsMode] = useState(false);
+  /** Panneau Épisodes (séries) / Saga (films) sous les commandes, façon Netflix. */
+  const [listOpen, setListOpen] = useState(false);
+  const [listSeason, setListSeason] = useState<number | null>(null);
 
   const index = item.files.findIndex((file) => file.id === fileId);
   const file = index >= 0 ? item.files[index] : item.files[0];
@@ -400,7 +407,7 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
     seek(pctFromPointer(event.clientX) * duration);
   };
 
-  const showUi = uiVisible || !playing || Boolean(error);
+  const showUi = uiVisible || !playing || Boolean(error) || listOpen;
   const pct = (value: number): string => `${duration > 0 ? Math.min(100, (value / duration) * 100) : 0}%`;
   // Carte « Épisode suivant » : 25 dernières secondes (générique), décompte de 10 s qui se met en pause avec la vidéo.
   const nearEnd = Boolean(nextFile) && !creditsMode && duration > 60 && duration - time < 25;
@@ -621,6 +628,20 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
                   {mode === 'transcode' ? 'FFmpeg' : 'Direct'}
                 </button>
               )}
+              {(item.type === 'tv' ? item.files.length > 1 : saga.length > 1) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setListSeason(file?.season ?? null);
+                    setListOpen((open) => !open);
+                  }}
+                  aria-expanded={listOpen}
+                  className="inline-flex items-center gap-1.5 rounded p-1.5 text-sm transition hover:scale-105"
+                >
+                  <ListVideo className="h-7 w-7" />
+                  <span className="hidden md:inline">{item.type === 'tv' ? 'Épisodes' : 'Saga'}</span>
+                </button>
+              )}
               {nextFile && (
                 <button type="button" onClick={goNext} className="inline-flex items-center gap-1.5 p-1.5 text-sm transition hover:scale-105">
                   <SkipForward className="h-7 w-7" />
@@ -637,6 +658,41 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
               </button>
             </div>
           </div>
+
+          <AnimatePresence initial={false}>
+            {listOpen && (
+              <motion.div
+                key="episodes"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                <EpisodeStrip
+                  item={item}
+                  fileId={fileId}
+                  saga={saga}
+                  season={listSeason}
+                  onSeason={setListSeason}
+                  onPickFile={(id) => {
+                    setListOpen(false);
+                    if (id !== fileId) {
+                      persist(false);
+                      onChangeFile(id);
+                    }
+                  }}
+                  onPickItem={(other) => {
+                    setListOpen(false);
+                    if (other.id !== item.id) {
+                      persist(false);
+                      onPlayItem?.(other);
+                    }
+                  }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -688,5 +744,116 @@ export function Player({ item, fileId, onClose, onChangeFile }: Props) {
         </motion.div>
       )}
     </motion.div>
+  );
+}
+
+/** Bande d'épisodes (saison au choix) ou des films de la saga, sous les commandes du lecteur. */
+function EpisodeStrip({
+  item,
+  fileId,
+  saga,
+  season,
+  onSeason,
+  onPickFile,
+  onPickItem
+}: {
+  item: MediaItem;
+  fileId: string;
+  saga: MediaItem[];
+  season: number | null;
+  onSeason: (season: number | null) => void;
+  onPickFile: (fileId: string) => void;
+  onPickItem: (item: MediaItem) => void;
+}) {
+  const progress = getProgressMap();
+  const ratio = (id: string): number => {
+    const entry = progress[id];
+    return entry && entry.duration > 0 ? Math.min(1, entry.position / entry.duration) : 0;
+  };
+  const seasons = [...new Set(item.files.map((file) => file.season ?? 0))].sort((a, b) => a - b);
+  const shownSeason = season ?? seasons[0] ?? 0;
+
+  const cards =
+    item.type === 'tv'
+      ? item.files
+          .filter((file) => (file.season ?? 0) === shownSeason)
+          .map((file) => {
+            const meta = file.season !== null && file.episode !== null ? item.seasons[String(file.season)]?.episodes[String(file.episode)] : undefined;
+            return {
+              key: file.id,
+              current: file.id === fileId,
+              art: artUrl(meta?.still) ?? artUrl(item.backdrop),
+              label: file.episode !== null ? `Épisode ${file.episode}` : file.name,
+              title: meta?.name ?? '',
+              progress: ratio(file.id),
+              pick: () => onPickFile(file.id)
+            };
+          })
+      : saga.map((film) => ({
+          key: film.id,
+          current: film.id === item.id,
+          art: artUrl(film.backdrop) ?? artUrl(film.poster),
+          label: film.year ? String(film.year) : '',
+          title: film.title,
+          progress: Math.max(0, ...film.files.map((file) => ratio(file.id))),
+          pick: () => onPickItem(film)
+        }));
+
+  return (
+    <div className="pt-4">
+      <div className="mb-3 flex items-center gap-3">
+        <p className="shrink-0 text-base font-semibold text-white md:text-lg">
+          {item.type === 'tv' ? 'Épisodes' : `Saga · ${item.collections?.[0]?.split(' · ').pop() ?? ''}`}
+        </p>
+        {item.type === 'tv' && seasons.length > 1 && (
+          <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
+            {seasons.map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onSeason(value)}
+                className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                  value === shownSeason ? 'bg-white text-black' : 'bg-white/10 text-neutral-200 hover:bg-white/20'
+                }`}
+              >
+                Saison {value}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+        {cards.map((card) => (
+          <button
+            key={card.key}
+            type="button"
+            onClick={card.pick}
+            className={`group/ep w-44 shrink-0 text-left md:w-56 ${card.current ? '' : 'opacity-80 hover:opacity-100'}`}
+          >
+            <span
+              className={`relative block aspect-video overflow-hidden rounded-md bg-neutral-800 ring-2 transition ${
+                card.current ? 'ring-ap-red' : 'ring-transparent group-hover/ep:ring-white/60'
+              }`}
+            >
+              {card.art && <img src={card.art} alt="" loading="lazy" className="h-full w-full object-cover" />}
+              {card.current ? (
+                <span className="absolute left-1.5 top-1.5 rounded bg-ap-red px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">En cours</span>
+              ) : (
+                <span className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition group-hover/ep:opacity-100">
+                  <Play className="h-8 w-8 fill-white text-white" />
+                </span>
+              )}
+              {card.progress > 0.01 && (
+                <span className="absolute inset-x-1.5 bottom-1.5 h-1 overflow-hidden rounded bg-white/25">
+                  <span className="block h-full bg-ap-red" style={{ width: `${Math.round(card.progress * 100)}%` }} />
+                </span>
+              )}
+            </span>
+            <span className="mt-1.5 block text-xs text-neutral-400">{card.label}</span>
+            <span className="line-clamp-1 block text-sm font-medium text-white">{card.title}</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

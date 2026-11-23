@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { FolderSearch, RefreshCw } from 'lucide-react';
 import type { MediaItem, Profile, RowFilter, ScanStatus, Tab } from '../types';
 import { api } from '../lib/api';
-import { buildRows, facetsOf, filterItems, itemProgress, kidsAllowed, pickFeatured, progressRatio, rankByRating, resumeFileId, sortSearchResults, TOP_CATEGORY } from '../lib/catalog';
+import { buildRows, facetsOf, filterItems, groupSagas, itemProgress, kidsAllowed, pickFeatured, progressRatio, rankByRating, resumeFileId, sortSearchResults, TOP_CATEGORY } from '../lib/catalog';
 import { getProgressMap, removeFromContinue, toggleFavorite } from '../lib/storage';
 import { useCatalog } from '../hooks/useCatalog';
 import { useFavorites, useProgress } from '../hooks/useStorage';
@@ -377,6 +377,12 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
             fileId={playing.fileId}
             onClose={() => setPlaying(null)}
             onChangeFile={(fileId) => setPlaying({ itemId: playingItem.id, fileId })}
+            saga={
+              playingItem.collections?.[0]
+                ? groupSagas(items.filter((other) => other.collections?.[0] === playingItem.collections?.[0]))
+                : []
+            }
+            onPlayItem={(other) => play(other)}
           />
         )}
       </AnimatePresence>
