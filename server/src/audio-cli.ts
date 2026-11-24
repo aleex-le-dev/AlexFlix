@@ -190,7 +190,7 @@ async function main(): Promise<void> {
       running,
       total: totalVideos,
       ...byStatus,
-      remaining: Math.max(0, totalVideos - byStatus.done - byStatus.native),
+      remaining: Math.max(0, totalVideos - byStatus.done - byStatus.native - byStatus.failed),
       etaMinutes,
       current: [...current],
       published: publishedReady,
