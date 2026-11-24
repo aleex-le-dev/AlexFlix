@@ -13,6 +13,7 @@
     "deploy": "tsx src/deploy-cli.ts",
     "freebox:check": "tsx src/freebox-check.ts",
     "audio": "tsx src/audio-cli.ts",
+    "sync-agent": "tsx src/sync-agent.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

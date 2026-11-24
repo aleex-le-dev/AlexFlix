@@ -162,6 +162,13 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
   const play = useCallback((item: MediaItem, fileId?: string) => {
     const target = fileId ?? resumeFileId(item, getProgressMap());
     if (!target) return;
+    // Mobile : plein écran + paysage dès le toucher sur « Lecture » (demandé pendant le geste, sinon refusé).
+    if (window.matchMedia('(hover: none)').matches && !document.fullscreenElement) {
+      void document.documentElement
+        .requestFullscreen?.()
+        .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+        .catch(() => undefined);
+    }
     setSelectedId(null);
     setPlaying({ itemId: item.id, fileId: target });
   }, []);
@@ -375,7 +382,11 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
             key={playing.itemId}
             item={playingItem}
             fileId={playing.fileId}
-            onClose={() => setPlaying(null)}
+            onClose={() => {
+              setPlaying(null);
+              if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+              (screen.orientation as ScreenOrientation & { unlock?: () => void }).unlock?.();
+            }}
             onChangeFile={(fileId) => setPlaying({ itemId: playingItem.id, fileId })}
             saga={
               playingItem.collections?.[0]
@@ -392,18 +403,26 @@ export function Browse({ profile, profiles, onSwitchProfile, onManageProfiles, o
       <AnimatePresence>
         {previewId && byId.get(previewId) && (
           <QuickSheet
-            key="quick"
+            key={previewId}
             item={byId.get(previewId) as MediaItem}
             isFavorite={favorites.includes(previewId)}
             progress={progressRatio(itemProgress(byId.get(previewId) as MediaItem, progress))}
-            onPlay={(item) => {
+            onPlay={(item, fileId) => {
               setPreviewId(null);
-              play(item);
+              play(item, fileId);
             }}
             onToggleFavorite={toggleFav}
-            onMore={(item) => {
+            saga={
+              byId.get(previewId)?.collections?.[0]
+                ? groupSagas(items.filter((other) => other.collections?.[0] === byId.get(previewId)?.collections?.[0]))
+                : []
+            }
+            onSelect={(other) => setPreviewId(other.id)}
+            onSearchPerson={(name) => {
               setPreviewId(null);
-              setSelectedId(item.id);
+              setQuery(name);
+              setSearchMode(true);
+              window.scrollTo({ top: 0 });
             }}
             onClose={() => setPreviewId(null)}
           />

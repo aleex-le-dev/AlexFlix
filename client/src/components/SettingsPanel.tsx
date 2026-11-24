@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AudioLines, CheckCircle2, CircleAlert, LoaderCircle, X } from 'lucide-react';
 import { lockScroll } from '../lib/scrollLock';
+import { SyncSection } from './SyncSection';
 
 /** État envoyé par « npm run audio » (server/src/audio-cli.ts) à la racine du site. */
 interface AudioStatus {
@@ -98,7 +99,7 @@ export function SettingsPanel({ onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label="Paramètres"
-        className="w-full max-w-xl rounded-2xl bg-[#181818] p-6 shadow-2xl ring-1 ring-white/10 md:p-8"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-[#181818] p-6 shadow-2xl ring-1 ring-white/10 md:p-8"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-semibold text-white">Paramètres</h2>
@@ -107,7 +108,9 @@ export function SettingsPanel({ onClose }: Props) {
           </button>
         </div>
 
-        <section className="mt-6 rounded-xl bg-white/5 p-5 ring-1 ring-white/10">
+        <SyncSection />
+
+        <section className="mt-4 rounded-xl bg-white/5 p-5 ring-1 ring-white/10">
           <div className="flex items-center gap-3">
             <AudioLines className="h-5 w-5 text-ap-red" />
             <h3 className="font-semibold text-white">Son des films (Dolby → AAC)</h3>

@@ -4,10 +4,12 @@
   .\deploy.ps1             scan du disque Freebox + liens de telechargement + envoi FTP
   .\deploy.ps1 -SansScan   liens de telechargement + envoi FTP (catalogue actuel)
   .\deploy.ps1 -SiteSeul   envoi de l'interface et du catalogue actuel, sans Freebox
+  .\deploy.ps1 -SansAudio  comme ci-dessus mais sans l'etape pistes son
 #>
 param(
   [switch]$SansScan,
-  [switch]$SiteSeul
+  [switch]$SiteSeul,
+  [switch]$SansAudio
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,7 +63,7 @@ try {
   Write-Step 'Publication FTP'
   Invoke-Npm $deployArgs 'La publication a echoue (voir le message ci-dessus).'
 
-  if (-not $SiteSeul) {
+  if (-not $SiteSeul -and -not $SansAudio) {
     # Son Dolby (AC3/E-AC3) illisible par les navigateurs : piste AAC separee pour les nouvelles videos, puis republication.
     Write-Step 'Pistes son AAC (nouvelles videos)'
     if (-not (Test-Path -LiteralPath (Get-EnvValue 'FFMPEG_PATH')) -and -not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {

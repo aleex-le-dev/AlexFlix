@@ -25,9 +25,11 @@ function DownloadLink({ file, label, className }: { file: MediaFileDTO; label?: 
   );
 }
 import { groupSagas, itemProgress, progressRatio, resumeFileId } from '../lib/catalog';
-import { capitalize, episodeLabel, formatRating, formatSize, itemMeta } from '../lib/format';
+import { capitalize, episodeLabel, formatRating, formatSize, itemMeta, seasonCount } from '../lib/format';
 import type { ProgressEntry } from '../lib/storage';
 import { SmoothImg } from './SmoothImg';
+import { TrailerFullscreen } from './TrailerFullscreen';
+import { TrailerPlayer } from './TrailerPlayer';
 
 interface Props {
   item: MediaItem;
@@ -144,16 +146,28 @@ export function DetailModal({
     art: string | null;
     stacked: boolean;
   };
-  const toCard = (other: MediaItem): SimilarCard => ({
-    key: other.id,
-    open: () => onSelect(other),
-    title: other.title,
-    badge: other.year ? String(other.year) : '',
-    label: '',
-    text: other.overview,
-    art: artUrl(other.backdrop, 'md') ?? artUrl(other.poster, 'md'),
-    stacked: false
-  });
+  /** Série : « 3 saisons · 26 ép. » et, si elle est commencée, l'épisode où l'on en est. */
+  const seriesInfo = (other: MediaItem): { badge: string; resume: string } => {
+    const seasons = seasonCount(other);
+    const episodes = other.files.length;
+    const badge = `${seasons > 1 ? `${seasons} saisons · ` : ''}${episodes} ép.`;
+    const last = itemProgress(other, progress);
+    const file = last ? other.files.find((candidate) => candidate.id === last.fileId) : undefined;
+    return { badge, resume: file && progressRatio(last) > 0.01 ? `En cours : ${episodeLabel(file)}` : '' };
+  };
+  const toCard = (other: MediaItem): SimilarCard => {
+    const series = other.type === 'tv' ? seriesInfo(other) : null;
+    return {
+      key: other.id,
+      open: () => onSelect(other),
+      title: other.title,
+      badge: series ? series.badge : other.year ? String(other.year) : '',
+      label: series?.resume ?? '',
+      text: series?.resume ? `${series.resume} · ${other.overview}` : other.overview,
+      art: artUrl(other.backdrop, 'md') ?? artUrl(other.poster, 'md'),
+      stacked: false
+    };
+  };
   const similarCards = useMemo<SimilarCard[]>(() => {
     const folderOf = (other: MediaItem): string => (other.collections?.[0] ? `saga:${other.collections[0]}` : `dossier:${other.categories[0] ?? ''}`);
     const cards: SimilarCard[] = [];
@@ -181,7 +195,7 @@ export function DetailModal({
         title: isSaga ? (name.split(' · ').pop() ?? name) : name,
         badge: `${members.length} ${unit}`,
         label: isSaga ? 'Saga' : 'Dossier',
-        text: members.map((member) => member.title).join(' · '),
+        text: members.map((member) => (member.type === 'tv' ? `${member.title} (${seriesInfo(member).badge})` : member.title)).join(' · '),
         art: artUrl(members[0].backdrop, 'md') ?? artUrl(members[0].poster, 'md'),
         stacked: true
       });
@@ -250,15 +264,8 @@ export function DetailModal({
           }}
         >
           {touchDevice && <span aria-hidden="true" className="absolute left-1/2 top-2 z-20 h-1.5 w-10 -translate-x-1/2 rounded-full bg-white/60 shadow" />}
-          {showTrailer && item.trailer ? (
-            <iframe
-              src={`https://www.youtube-nocookie.com/embed/${item.trailer}?autoplay=1&rel=0&playsinline=1&origin=${encodeURIComponent(window.location.origin)}`}
-              title={`Bande-annonce ${item.title}`}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              referrerPolicy="strict-origin-when-cross-origin"
-              allowFullScreen
-              className="absolute inset-0 h-full w-full"
-            />
+          {showTrailer && item.trailer && !touchDevice ? (
+            <TrailerPlayer videoKey={item.trailer} title={item.title} onClose={() => setShowTrailer(false)} />
           ) : (
             <>
               {backdrop ? (
@@ -315,7 +322,16 @@ export function DetailModal({
                   {item.trailer && (
                     <button
                       type="button"
-                      onClick={() => setShowTrailer(true)}
+                      onClick={() => {
+                        setShowTrailer(true);
+                        // Mobile : plein écran demandé pendant le toucher (sinon refusé), puis paysage si possible.
+                        if (touchDevice) {
+                          void document.documentElement
+                            .requestFullscreen?.()
+                            .then(() => (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.('landscape'))
+                            .catch(() => undefined);
+                        }
+                      }}
                       className="inline-flex items-center gap-2 rounded-full border-2 border-white/50 bg-black/40 px-4 py-1.5 text-sm text-white transition hover:border-white"
                     >
                       <Clapperboard className="h-4 w-4" /> Bande-annonce
@@ -333,15 +349,6 @@ export function DetailModal({
           >
             <X className="h-5 w-5" />
           </button>
-          {showTrailer && (
-            <button
-              type="button"
-              onClick={() => setShowTrailer(false)}
-              className="absolute left-4 top-4 z-10 rounded bg-black/70 px-3 py-1.5 text-sm text-white hover:bg-black"
-            >
-              Fermer la bande-annonce
-            </button>
-          )}
         </div>
 
         {last && progressRatio(last) > 0.01 && progressRatio(last) < 0.95 && (
@@ -438,22 +445,32 @@ export function DetailModal({
 
         {item.type === 'tv' && item.files.length > 0 && (
           <section className="px-6 pb-8 md:px-12">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h3 className="text-xl font-semibold text-white md:text-2xl">Épisodes</h3>
+            <div className="mb-4">
+              <div className="flex items-baseline justify-between gap-4">
+                <h3 className="text-xl font-semibold text-white md:text-2xl">Épisodes</h3>
+                <span className="text-sm text-neutral-400">
+                  {episodes.length} épisode{episodes.length > 1 ? 's' : ''}
+                </span>
+              </div>
               {seasons.length > 1 ? (
-                <select
-                  value={season}
-                  onChange={(event) => setSeason(Number(event.target.value))}
-                  className="rounded border border-white/25 bg-[#242424] px-3 py-2 text-sm text-white outline-hidden focus:border-white"
-                >
+                <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Saisons">
                   {seasons.map((value) => (
-                    <option key={value} value={value}>
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={value === season}
+                      onClick={() => setSeason(value)}
+                      className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-semibold transition ${
+                        value === season ? 'bg-white text-black' : 'bg-white/10 text-neutral-200 ring-1 ring-white/10 hover:bg-white/20'
+                      }`}
+                    >
                       {seasonName(value)}
-                    </option>
+                    </button>
                   ))}
-                </select>
+                </div>
               ) : (
-                <span className="text-sm text-neutral-400">{seasonName(season)}</span>
+                <p className="mt-1 text-sm text-neutral-400">{seasonName(season)}</p>
               )}
             </div>
             <ol className="divide-y divide-white/10 border-y border-white/10">
@@ -464,38 +481,45 @@ export function DetailModal({
                 const ratio = progressRatio(progress[file.id] ?? null);
                 return (
                   <li key={file.id} className="flex items-center gap-2">
+                    {/* Mobile : vignette + titre complet, résumé en dessous sur toute la largeur ; toucher = lecture. */}
                     <button
                       type="button"
                       onClick={() => onPlay(item, file.id)}
-                      className={`group/ep flex min-w-0 flex-1 items-center gap-4 rounded-md px-2 py-4 text-left transition hover:bg-white/5 ${
+                      className={`group/ep block min-w-0 flex-1 rounded-md px-2 py-4 text-left transition hover:bg-white/5 ${
                         file.id === resumeId ? 'bg-white/[0.04]' : ''
                       }`}
                     >
-                      <span className="w-7 shrink-0 text-center text-xl text-neutral-400">{file.episode ?? '•'}</span>
-                      <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded bg-neutral-800 md:w-40">
-                        {still && <SmoothImg src={still} alt="" loading="lazy" className="h-full w-full object-cover" />}
-                        <div className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition group-hover/ep:opacity-100">
-                          <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-black/50">
-                            <Play className="h-4 w-4 fill-current" />
+                      <span className="flex items-center gap-3 md:gap-4">
+                        <span className="hidden w-7 shrink-0 text-center text-xl text-neutral-400 md:block">{file.episode ?? '•'}</span>
+                        <span className="relative block aspect-video w-36 shrink-0 overflow-hidden rounded bg-neutral-800 md:w-40">
+                          {still && <SmoothImg src={still} alt="" loading="lazy" className="h-full w-full object-cover" />}
+                          <span className="absolute inset-0 grid place-items-center bg-black/30 transition md:bg-black/40 md:opacity-0 md:group-hover/ep:opacity-100">
+                            <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-black/50">
+                              <Play className="h-4 w-4 fill-current" />
+                            </span>
                           </span>
-                        </div>
-                        {ratio > 0 && (
-                          <div className="absolute inset-x-0 bottom-0 h-1 bg-white/25">
-                            <div className="h-full bg-ap-red" style={{ width: `${Math.round(ratio * 100)}%` }} />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <p className="truncate font-medium text-white">{meta?.name ?? episodeLabel(file)}</p>
-                          <span className="shrink-0 text-sm text-neutral-400">{meta?.runtime ? `${meta.runtime} min` : ''}</span>
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-sm text-neutral-400">{meta?.overview || file.name}</p>
-                      </div>
+                          {ratio > 0 && (
+                            <span className="absolute inset-x-0 bottom-0 h-1 bg-white/25">
+                              <span className="block h-full bg-ap-red" style={{ width: `${Math.round(ratio * 100)}%` }} />
+                            </span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-semibold text-neutral-400">
+                            Épisode {file.episode ?? '•'}
+                            {meta?.runtime ? ` · ${meta.runtime} min` : ''}
+                          </span>
+                          <span className="mt-0.5 line-clamp-2 block font-medium leading-snug text-white">{meta?.name ?? episodeLabel(file)}</span>
+                          <span className="mt-1 hidden text-sm text-neutral-400 md:line-clamp-2">{meta?.overview || file.name}</span>
+                        </span>
+                      </span>
+                      {(meta?.overview || file.name) && (
+                        <span className="mt-2 line-clamp-3 block text-sm leading-relaxed text-neutral-400 md:hidden">{meta?.overview || file.name}</span>
+                      )}
                     </button>
                     <DownloadLink
                       file={file}
-                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white"
+                      className="hidden h-10 w-10 shrink-0 place-items-center rounded-full text-neutral-400 transition hover:bg-white/10 hover:text-white md:grid"
                     />
                   </li>
                 );
@@ -565,6 +589,9 @@ export function DetailModal({
                       {card.stacked && (
                         <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 text-[10px] font-bold uppercase tracking-wider text-white">{card.label}</span>
                       )}
+                      {!card.stacked && card.label && (
+                        <span className="absolute bottom-2 left-2 rounded bg-ap-red px-1.5 py-0.5 text-[11px] font-semibold text-white">{card.label}</span>
+                      )}
                     </span>
                     <span className="block p-3">
                       <span className="line-clamp-1 text-sm font-semibold text-white">{card.title}</span>
@@ -617,6 +644,10 @@ export function DetailModal({
             ))}
           </ul>
         </details>
+        )}
+        {/* Mobile : bande-annonce directement en plein écran. */}
+        {touchDevice && showTrailer && item.trailer && (
+          <TrailerFullscreen videoKey={item.trailer} title={item.title} onClose={() => setShowTrailer(false)} />
         )}
       </motion.article>
     </motion.div>

@@ -87,7 +87,7 @@ DirectoryIndex gate.php
   RewriteRule ^gate\.php$ - [L]
   RewriteRule ^ gate.php [L,QSA]
 </IfModule>
-<FilesMatch "^(ap-config\.php|\.ap-attempts\.json|\.ap-state\.json)$">
+<FilesMatch "^(ap-config\.php|\.ap-attempts\.json|\.ap-state\.json|\.ap-sync\.json)$">
   Require all denied
 </FilesMatch>
 `;
@@ -453,6 +453,33 @@ if (strpos($path, '/__api/') === 0) {
     echo json_encode(ap_state_read(), JSON_UNESCAPED_UNICODE);
     exit;
   }
+  // Synchronisation demandée depuis Paramètres : le PC (npm run sync-agent) la récupère et lance le deploy.
+  if ($path === '/__api/sync') {
+    $syncFile = __DIR__ . '/.ap-sync.json';
+    if ($method === 'GET') {
+      echo is_file($syncFile) ? (string)file_get_contents($syncFile) : '{"requestedAt":null}';
+      exit;
+    }
+    $body = json_decode((string)file_get_contents('php://input'), true);
+    $action = is_array($body) ? (string)($body['action'] ?? '') : '';
+    if ($method === 'POST' && ($action === 'request' || $action === 'check')) {
+      $current = is_file($syncFile) ? json_decode((string)file_get_contents($syncFile), true) : null;
+      // Une synchro demandée l'emporte sur une simple vérification.
+      if (!is_array($current) || empty($current['requestedAt']) || ($action === 'request' && ($current['kind'] ?? 'sync') === 'check')) {
+        @file_put_contents($syncFile, json_encode(['requestedAt' => gmdate('c'), 'kind' => $action === 'check' ? 'check' : 'sync']), LOCK_EX);
+      }
+      echo '{"ok":true}';
+      exit;
+    }
+    if ($method === 'POST' && $action === 'clear') {
+      @unlink($syncFile);
+      echo '{"ok":true}';
+      exit;
+    }
+    http_response_code(400);
+    echo '{"error":"Action inconnue"}';
+    exit;
+  }
   if ($path === '/__api/avatars' && $method === 'GET') {
     $files = (array)glob(__DIR__ . '/avatars/*.jpg');
     usort($files, function ($a, $b) { return (int)@filemtime((string)$b) <=> (int)@filemtime((string)$a); });
@@ -644,7 +671,7 @@ $types = [
 $ext = strtolower(pathinfo($target, PATHINFO_EXTENSION));
 header('Content-Type: ' . ($types[$ext] ?? 'application/octet-stream'));
 header('Content-Length: ' . (string)filesize($target));
-if ($ext === 'html' || $ext === 'webmanifest' || basename($target) === 'catalog.json' || basename($target) === 'audio-status.json') {
+if ($ext === 'html' || $ext === 'webmanifest' || basename($target) === 'catalog.json' || basename($target) === 'audio-status.json' || basename($target) === 'sync-status.json') {
   header('Cache-Control: private, no-cache');
 } elseif (strpos($rel, '/assets/') === 0) {
   header('Cache-Control: private, max-age=31536000, immutable');

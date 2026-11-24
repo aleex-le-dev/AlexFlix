@@ -11,6 +11,7 @@
  *   npm run audio -- --limit 5 n'en traiter que 5 (test)
  */
 import { execFile, spawn } from 'node:child_process';
+import { rmSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -112,7 +113,39 @@ async function retry<T>(task: () => Promise<T>, attempts = 3): Promise<T> {
   }
 }
 
+/** Verrou : une seule conversion à la fois (deploy, synchro depuis le site, lancement manuel). */
+const lockFile = (): string => path.join(config.dataDir, 'audio.lock');
+async function acquireLock(): Promise<boolean> {
+  try {
+    const pid = Number((await fs.readFile(lockFile(), 'utf8')).trim());
+    if (pid && pid !== process.pid) {
+      try {
+        process.kill(pid, 0);
+        return false;
+      } catch {
+        // processus mort : verrou périmé
+      }
+    }
+  } catch {
+    // pas de verrou
+  }
+  await fs.writeFile(lockFile(), String(process.pid));
+  const release = (): void => {
+    try {
+      rmSync(lockFile(), { force: true });
+    } catch {
+      // ignore
+    }
+  };
+  process.once('exit', release);
+  return true;
+}
+
 async function main(): Promise<void> {
+  if (!(await acquireLock())) {
+    log('Une conversion est déjà en cours : rien à faire.');
+    return;
+  }
   validateConfig('deploy');
   const args = process.argv.slice(2);
   const limitIndex = args.indexOf('--limit');

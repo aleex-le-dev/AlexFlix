@@ -95,7 +95,10 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
   const audioRef = useRef<HTMLAudioElement>(null);
   // Piste AAC seulement si l'appareil ne décode pas le Dolby (sinon on garde le 5.1 d'origine).
   const [nativeDolby] = useState(supportsDolby);
-  const sideAudio = mode === 'direct' && !nativeDolby ? audioTrackUrl(fileId) : null;
+  /** L'appareil se dit compatible Dolby mais ne sort aucun son : on bascule sur la piste AAC à la demande. */
+  const [forceAac, setForceAac] = useState(false);
+  const aacUrl = mode === 'direct' ? audioTrackUrl(fileId) : null;
+  const sideAudio = aacUrl && (!nativeDolby || forceAac) ? aacUrl : null;
   const nextFile = item.type === 'tv' && index >= 0 ? (item.files[index + 1] ?? null) : null;
   const episodeMeta =
     file && file.season !== null && file.episode !== null ? item.seasons[String(file.season)]?.episodes[String(file.episode)] : undefined;
@@ -148,6 +151,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
     durationRef.current = 0;
     setInfo(null);
     setNoAudio(false);
+    setForceAac(false);
     setCreditsMode(false);
     audioCheck.current = { start: null, done: false };
     setMode(null);
@@ -201,7 +205,9 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
     return () => {
       unlock();
       document.removeEventListener('fullscreenchange', onFullscreen);
-      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      // Plein écran du lecteur (ordinateur) : on le quitte. Celui de la page (mobile) est géré à la fermeture,
+      // pour rester en plein écran quand on passe d'un film de la saga à l'autre.
+      if (document.fullscreenElement === rootRef.current) void document.exitFullscreen().catch(() => undefined);
       notifyStorage();
     };
   }, []);
@@ -250,6 +256,17 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
     else void rootRef.current?.requestFullscreen().catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    const video = videoRef.current;
+    if (!sideAudio || !audio || !video) return;
+    video.muted = true;
+    audio.currentTime = video.currentTime;
+    audio.volume = volume;
+    audio.muted = muted;
+    if (!video.paused) void audio.play().catch(() => undefined);
+  }, [sideAudio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goNext = useCallback(() => {
     if (!nextFile) return;
@@ -484,8 +501,36 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
         >
           <p className="text-sm font-semibold text-white">Pas de son dans le navigateur</p>
           <p className="mt-1 text-xs text-neutral-300">
-            Le son de ce fichier est en Dolby (AC3 / E-AC3), que le navigateur ne sait pas lire. VLC le lit parfaitement. {vlcHint()}
+            {aacUrl
+              ? 'Le son d’origine est en Dolby, que cet appareil ne lit pas ici. Choisissez :'
+              : `Le son de ce fichier est en Dolby (AC3 / E-AC3), que le navigateur ne sait pas lire. VLC le lit parfaitement. ${vlcHint()}`}
           </p>
+          {aacUrl ? (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setForceAac(true);
+                  setNoAudio(false);
+                }}
+                className="rounded-xl bg-white px-4 py-2.5 text-left text-black transition hover:bg-white/85"
+              >
+                <span className="block text-sm font-semibold">Son normal ici</span>
+                <span className="block text-xs text-neutral-600">AAC stéréo, sans quitter le site</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  videoRef.current?.pause();
+                  openInVlc(src, `${item.title}${subtitle ? ` - ${subtitle}` : ''}`);
+                }}
+                className="rounded-xl bg-[#ff8800] px-4 py-2.5 text-left text-black transition hover:bg-[#ffa033]"
+              >
+                <span className="block text-sm font-semibold">VLC · Dolby 5.1</span>
+                <span className="block text-xs text-black/70">Son d’origine, application VLC</span>
+              </button>
+            </div>
+          ) : (
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -512,6 +557,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
               Continuer sans son
             </button>
           </div>
+          )}
         </motion.div>
       )}
 
@@ -552,7 +598,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
           )}
         </div>
 
-        <div className="pointer-events-auto absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/50 to-transparent px-4 pb-4 pt-20 md:px-8">
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 via-black/50 to-transparent px-[max(1rem,env(safe-area-inset-left))] pb-[max(1rem,env(safe-area-inset-bottom))] pt-20 md:px-8">
           <div
             ref={barRef}
             onPointerDown={onBarDown}
@@ -581,7 +627,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
             )}
           </div>
 
-          <div className="mt-2 flex items-center gap-2 md:gap-4">
+          <div className="mt-2 flex items-center gap-1 sm:gap-2 md:gap-4">
             <button type="button" onClick={togglePlay} aria-label={playing ? 'Pause' : 'Lecture'} className="p-1.5 transition hover:scale-110">
               {playing ? <Pause className="h-8 w-8 fill-current" /> : <Play className="h-8 w-8 fill-current" />}
             </button>
@@ -591,7 +637,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
             <button type="button" onClick={() => seek(timeRef.current + 10)} aria-label="Avancer de 10 secondes" className="p-1.5 transition hover:scale-110">
               <RotateCw className="h-7 w-7" />
             </button>
-            <div className="group/vol flex items-center">
+            <div className="group/vol hidden items-center md:flex">
               <button
                 type="button"
                 onClick={() => applyVolume(volume, !muted)}
@@ -611,7 +657,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
                 className="ap-range w-0 opacity-0 transition-all duration-300 group-hover/vol:w-24 group-hover/vol:opacity-100"
               />
             </div>
-            <span className="text-sm tabular-nums text-neutral-200">
+            <span className="ml-1 whitespace-nowrap text-xs tabular-nums text-neutral-200 sm:text-sm">
               {formatClock(time)} / {formatClock(duration)}
             </span>
 
@@ -621,7 +667,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
                   type="button"
                   onClick={() => (mode === 'transcode' ? startDirect(timeRef.current) : startTranscode(timeRef.current))}
                   title="Basculer entre lecture directe et transcodage FFmpeg (son AC3/DTS, HEVC…)"
-                  className={`rounded border px-2 py-1 text-xs font-semibold transition ${
+                  className={`hidden rounded border px-2 py-1 text-xs font-semibold transition md:inline-block ${
                     mode === 'transcode' ? 'border-ap-red bg-ap-red/20 text-white' : 'border-white/40 text-neutral-200 hover:border-white'
                   }`}
                 >
@@ -652,7 +698,7 @@ export function Player({ item, fileId, onClose, onChangeFile, saga = [], onPlayI
                 type="button"
                 onClick={toggleFullscreen}
                 aria-label={fullscreen ? 'Quitter le plein écran' : 'Plein écran'}
-                className="p-1.5 transition hover:scale-110"
+                className="hidden p-1.5 transition hover:scale-110 md:block"
               >
                 {fullscreen ? <Minimize className="h-7 w-7" /> : <Maximize className="h-7 w-7" />}
               </button>
